@@ -121,4 +121,5 @@ public class Snake {
     public LinkedList<Point> getBody() { return body; }
     public int getLength()             { return body.size(); }
     public int getDirection()          { return direction; }
+    public int getNextDirection()      { return nextDirection; }
 }

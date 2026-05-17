@@ -160,7 +160,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
 
     private Point peekNextHead() {
         Point head = snake.getHead();
-        switch (snake.getDirection()) {
+        switch (snake.getNextDirection()) {
             case Snake.UP:   return new Point(head.x,     head.y - 1);
             case Snake.DOWN: return new Point(head.x,     head.y + 1);
             case Snake.LEFT: return new Point(head.x - 1, head.y);
