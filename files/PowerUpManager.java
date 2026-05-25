@@ -37,10 +37,13 @@ public class PowerUpManager {
         public final int    spawnWeight;  // yüksek = daha sık çıkar
         public final int    durationMs;
 
+
         PowerUpType(String label, int w, int d) {
             this.label = label; spawnWeight = w; durationMs = d;
         }
     }
+    private ObstacleManager obstacles;
+    public void setObstacles(ObstacleManager obs) { this.obstacles = obs; }
 
     // ── Tahtadaki bekleyen güç-up ─────────────────────────────────
     public static class PowerUp {
@@ -177,7 +180,8 @@ public class PowerUpManager {
             int y = random.nextInt(gridH);
             Point c = new Point(x, y);
             if (!snake.contains(c) && food.getFoodAt(c) == null
-                    && !boardMap.containsKey(c)) return c;
+                    && !boardMap.containsKey(c)
+                    && (obstacles == null || !obstacles.isObstacle(c))) return c;
         }
         return null;
     }

@@ -37,6 +37,7 @@ public class Food {
     private final int gridWidth;
     private final int gridHeight;
     private final Random random;
+    private ObstacleManager obstacles;
 
     // Bonus yiyeceğin tahtada kalma süresi (tick sayısı)
     private int bonusTimer = 0;
@@ -137,7 +138,8 @@ public class Food {
             Point candidate = new Point(x, y);
 
             // Yılanda yok ve başka yiyecek de yok
-            if (!snake.contains(candidate) && !foodMap.containsKey(candidate)) {
+            if (!snake.contains(candidate) && !foodMap.containsKey(candidate)
+                    && (obstacles == null || !obstacles.isObstacle(candidate))) {
                 return candidate;
             }
         }
@@ -149,6 +151,7 @@ public class Food {
         foodMap.clear();
         bonusTimer = 0;
     }
+    public void setObstacles(ObstacleManager obs) { this.obstacles = obs; }
 
     // ── Erişimciler ──────────────────────────────────────────────
 

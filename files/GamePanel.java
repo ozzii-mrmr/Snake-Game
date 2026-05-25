@@ -5,7 +5,7 @@ import java.awt.geom.*;
 import java.util.*;
 import java.util.List;
 
-public class GamePanel extends JPanel implements ActionListener, KeyListener {
+public class GamePanel extends JPanel implements ActionListener, KeyListener, MouseListener, MouseMotionListener {
 
     // ── Boyutlar ─────────────────────────────────────────────────
     static final int CELL    = 26;
@@ -86,6 +86,15 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
     private int level    = 1;
     private int animTick = 0;
 
+    // Menu navigation (0 = Başla, 1 = Duvar Geçişi, 2 = Çıkış)
+    private int menuBtn   = 0;
+    private int menuHover = -1; // mouse hover
+    private static final int MENU_BTN_COUNT = 3;
+
+    // Buton dikdörtgenleri (hit-test için her paint'te güncellenir)
+    private final Rectangle[] menuRects   = new Rectangle[MENU_BTN_COUNT];
+    private final Rectangle[] goRects     = new Rectangle[2]; // game-over overlay
+
     // Death shake
     private int shakeFrames = 0, shakeX = 0, shakeY = 0;
     private final Random rng = new Random();
@@ -120,6 +129,8 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         setBackground(C_BG);
         setFocusable(true);
         addKeyListener(this);
+        addMouseListener(this);
+        addMouseMotionListener(this);
 
         scoreManager = new ScoreManager();
         sound        = new SoundManager();
@@ -146,6 +157,8 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         food        = new Food(COLS, ROWS);
         obstacles   = new ObstacleManager(COLS, ROWS);
         powerUps    = new PowerUpManager(COLS, ROWS);
+        food.setObstacles(obstacles);
+        powerUps.setObstacles(obstacles);
         inputBuffer = new InputBuffer(Snake.RIGHT);
 
         food.spawnNormal(snake);
@@ -450,9 +463,11 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         // Gövde
         g2.setStroke(new BasicStroke(sw, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
         for (int i = n - 1; i >= 1; i--) {
+            Point a = body.get(i), b = body.get(i - 1);
+            // Wrap geçişi varsa çizgi çekme
+            if (Math.abs(a.x - b.x) > 1 || Math.abs(a.y - b.y) > 1) continue;
             float t = (float) i / (n - 1);
             g2.setColor(blendColor(C_SNAKE_BODY, C_SNAKE_TAIL, t));
-            Point a = body.get(i), b = body.get(i-1);
             g2.drawLine(cx(a.x), cy(a.y), cx(b.x), cy(b.y));
         }
 
@@ -477,8 +492,15 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
     private Path2D.Float snakePath(java.util.LinkedList<Point> body) {
         Path2D.Float path = new Path2D.Float();
         path.moveTo(cx(body.get(0).x), cy(body.get(0).y));
-        for (int i = 1; i < body.size(); i++)
-            path.lineTo(cx(body.get(i).x), cy(body.get(i).y));
+        for (int i = 1; i < body.size(); i++) {
+            Point prev = body.get(i - 1);
+            Point curr = body.get(i);
+            int dx = Math.abs(prev.x - curr.x);
+            int dy = Math.abs(prev.y - curr.y);
+            // Wrap geçişi: komşu değil demektir → çizgi çekme
+            if (dx > 1 || dy > 1) path.moveTo(cx(curr.x), cy(curr.y));
+            else                   path.lineTo(cx(curr.x), cy(curr.y));
+        }
         return path;
     }
 
@@ -667,61 +689,147 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
     // ══════════════════════════════════════════════════════════════
 
     private void drawMenuOverlay(Graphics2D g2) {
-        g2.setColor(new Color(8,10,18,230)); g2.fillRect(0,0,GRID_W,GRID_H);
+        // ── Arka plan ─────────────────────────────────────────────
+        g2.setColor(new Color(10, 12, 20));
+        g2.fillRect(0, 0, GRID_W, GRID_H);
 
-        int cw=360,ch=380,cardX=GRID_W/2-cw/2,cardY=GRID_H/2-ch/2;
-        drawCard(g2,cardX,cardY,cw,ch,new Color(20,24,38),new Color(52,211,153,50));
-
-        g2.setFont(fTitle); g2.setColor(C_ACCENT);
-        drawCenteredStr(g2,fTitle,"SNAKE",GRID_W/2,cardY+58,C_ACCENT);
-        drawCenteredStr(g2,fSmall,"Veri Yapıları Projesi",GRID_W/2,cardY+76,new Color(100,116,139));
-
-        // Divider
-        g2.setColor(new Color(255,255,255,15)); g2.fillRect(cardX+30,cardY+90,cw-60,1);
-
-        // Kontroller
-        int ix=cardX+36,iy=cardY+112;
-        drawKeyRow(g2,"↑ ↓ ← →  /  WASD","Hareket",  ix,iy);
-        drawKeyRow(g2,"P",               "Duraklat",  ix,iy+28);
-        drawKeyRow(g2,"M",               "Ses",       ix,iy+56);
-
-        // Wrap-around toggle
-        int wrapBtnW=cw-60, wrapBtnX=cardX+30, wrapBtnY=iy+84;
-        Color wrapC = wrapMode ? C_INDIGO : new Color(55,65,90);
-        drawRoundedButton(g2,wrapBtnX,wrapBtnY,wrapBtnW,30,
-                (wrapMode?"✓ ":"  ")+"Duvar Geçişi (T tuşu)  —  "+(wrapMode?"AÇIK":"KAPALI"), wrapC);
-
-        // Divider
-        g2.setColor(new Color(255,255,255,15)); g2.fillRect(cardX+30,cardY+250,cw-60,1);
-
-        // Yiyecek & güç-up göstergesi
-        int fy=cardY+268;
-        foodChip(g2,cardX+36,     fy,C_FOOD_N,"Normal +10");
-        foodChip(g2,cardX+140,    fy,C_FOOD_B,"Bonus +30");
-        foodChip(g2,cardX+240,    fy,C_FOOD_S,"Süper +50");
-        fy+=22;
-        foodChip(g2,cardX+36,     fy,C_PU_SLOW,  "Yavaş");
-        foodChip(g2,cardX+110,    fy,C_PU_SHIELD,"Kalkan");
-        foodChip(g2,cardX+184,    fy,C_PU_SHRINK,"Küçült");
-        foodChip(g2,cardX+258,    fy,C_PU_MAGNET,"2×Puan");
-
-        // En iyi skorlar
-        if (scoreManager.size()>0) {
-            g2.setColor(new Color(255,255,255,15)); g2.fillRect(cardX+30,cardY+318,cw-60,1);
-            g2.setFont(fSmall); g2.setColor(C_TEXT_MUTED);
-            g2.drawString("En İyi Skorlar",cardX+36,cardY+334);
-            int[] tops=scoreManager.getTopScores();
-            for (int i=0;i<Math.min(tops.length,3);i++) {
-                g2.setColor(i==0?C_WARN:C_TEXT_MUTED);
-                g2.drawString((i+1)+".  "+tops[i],cardX+36+i*95,cardY+350);
+        // Noktalı arka plan deseni
+        Composite orig = g2.getComposite();
+        g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.18f));
+        g2.setColor(new Color(52, 211, 153));
+        for (int x = 24; x < GRID_W; x += 32) {
+            for (int y = 24; y < GRID_H; y += 32) {
+                g2.fillOval(x - 1, y - 1, 2, 2);
             }
         }
+        g2.setComposite(orig);
 
-        // Başla butonu
-        double pulse=Math.sin(animTick*0.07)*0.5+0.5;
-        Color btnC=blendColor(new Color(30,100,65),C_ACCENT,(float)pulse);
-        int btnW=220,btnH=40,btnX=GRID_W/2-btnW/2,btnY=cardY+ch-54;
-        drawRoundedButton(g2,btnX,btnY,btnW,btnH,"Başla  —  Space / Enter",btnC);
+        int cx = GRID_W / 2;
+
+        // ── Logo alanı ────────────────────────────────────────────
+        int logoY = 118;
+
+        // Ana başlık
+        Font fBig = new Font(FF, Font.BOLD, 62);
+        g2.setFont(fBig);
+        FontMetrics fmBig = g2.getFontMetrics();
+        String title = "SNAKE";
+        int titleW = fmBig.stringWidth(title);
+
+        // Başlık glow
+        g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.12f));
+        g2.setColor(C_ACCENT);
+        g2.drawString(title, cx - titleW/2 + 3, logoY + 3);
+        g2.setComposite(orig);
+
+        g2.setColor(C_ACCENT);
+        g2.drawString(title, cx - titleW/2, logoY);
+
+        // Başlık altı ince çizgi
+        int lineY = logoY + 12;
+        int lineW = 48;
+        g2.setColor(new Color(52, 211, 153, 80));
+        g2.setStroke(new BasicStroke(1f));
+        g2.drawLine(cx - lineW, lineY, cx + lineW, lineY);
+
+        // ── Butonlar ──────────────────────────────────────────────
+        int btnW = 264, btnH = 48, btnGap = 10;
+        int totalBtnH = MENU_BTN_COUNT * btnH + (MENU_BTN_COUNT - 1) * btnGap;
+        int btnX = cx - btnW / 2;
+        int btnStartY = GRID_H / 2 - totalBtnH / 2 + 16;
+
+        String[]  labels = {
+                "Başla",
+                "Duvar Geçişi  —  " + (wrapMode ? "Açık" : "Kapalı"),
+                "Çıkış"
+        };
+        Color[] accents = { C_ACCENT, C_INDIGO, C_DANGER };
+
+        for (int i = 0; i < MENU_BTN_COUNT; i++) {
+            int by = btnStartY + i * (btnH + btnGap);
+            menuRects[i] = new Rectangle(btnX, by, btnW, btnH);
+            boolean sel   = (menuBtn   == i);
+            boolean hover = (menuHover == i);
+            drawModernButton(g2, menuRects[i], labels[i], accents[i], sel, hover);
+        }
+
+        // ── Klavye ipucu ──────────────────────────────────────────
+        int hintY = btnStartY + totalBtnH + 28;
+        g2.setFont(new Font(FF, Font.PLAIN, 11));
+        g2.setColor(new Color(100, 116, 139, 160));
+        String hint = "↑ ↓  gezin    Enter  onayla    M  ses";
+        FontMetrics fmH = g2.getFontMetrics();
+        g2.drawString(hint, cx - fmH.stringWidth(hint)/2, hintY);
+
+        // ── En iyi skorlar ─────────────────────────────────────────
+        if (scoreManager.size() > 0) {
+            int[] tops = scoreManager.getTopScores();
+            int scoreY = hintY + 30;
+
+            g2.setColor(new Color(255, 255, 255, 10));
+            g2.fillRect(cx - 140, scoreY - 14, 280, 1);
+
+            g2.setFont(new Font(FF, Font.PLAIN, 11));
+            g2.setColor(new Color(100, 116, 139));
+            String scoreLbl = "EN İYİ SKORLAR";
+            FontMetrics fmS = g2.getFontMetrics();
+            g2.drawString(scoreLbl, cx - fmS.stringWidth(scoreLbl)/2, scoreY);
+
+            scoreY += 18;
+            int cols = Math.min(tops.length, 3);
+            int colW = 80;
+            int startX = cx - (cols - 1) * colW / 2;
+            for (int i = 0; i < cols; i++) {
+                boolean isFirst = (i == 0);
+                g2.setFont(isFirst ? new Font(FF, Font.BOLD, 13) : new Font(FF, Font.PLAIN, 12));
+                g2.setColor(isFirst ? C_WARN : new Color(100, 116, 139));
+                FontMetrics fmC = g2.getFontMetrics();
+                String s = (i + 1) + ".  " + tops[i];
+                g2.drawString(s, startX + i * colW - fmC.stringWidth(s)/2, scoreY);
+            }
+        }
+    }
+
+    /** Sade, hover/seçim durumlu modern buton. */
+    private void drawModernButton(Graphics2D g2, Rectangle r,
+                                  String label, Color accent,
+                                  boolean selected, boolean hover) {
+        RoundRectangle2D rr = new RoundRectangle2D.Float(r.x, r.y, r.width, r.height, 10, 10);
+        Composite orig = g2.getComposite();
+
+        if (selected || hover) {
+            // Dolgu
+            int fillAlpha = hover && !selected ? 22 : 32;
+            g2.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), fillAlpha));
+            g2.fill(rr);
+            // Kenarlık
+            int borderAlpha = hover && !selected ? 100 : 200;
+            g2.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), borderAlpha));
+            g2.setStroke(new BasicStroke(selected ? 1.5f : 1f));
+            g2.draw(rr);
+        } else {
+            g2.setColor(new Color(255, 255, 255, 6));
+            g2.fill(rr);
+            g2.setColor(new Color(255, 255, 255, 22));
+            g2.setStroke(new BasicStroke(1f));
+            g2.draw(rr);
+        }
+
+        // Metin
+        Font f = selected
+                ? new Font(FF, Font.BOLD, 14)
+                : new Font(FF, Font.PLAIN, 13);
+        g2.setFont(f);
+        g2.setComposite(orig);
+        FontMetrics fm = g2.getFontMetrics();
+        int tx = r.x + r.width/2  - fm.stringWidth(label)/2;
+        int ty = r.y + r.height/2 + fm.getAscent()/2 - 2;
+
+        Color textColor = (selected || hover)
+                ? accent
+                : new Color(180, 190, 210);
+        g2.setColor(textColor);
+        g2.drawString(label, tx, ty);
     }
 
     private void drawPauseOverlay(Graphics2D g2) {
@@ -757,6 +865,8 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         }
 
         int bw=cw-56,bx=cx+28;
+        goRects[0] = new Rectangle(bx, cy+ch-88, bw, 36);
+        goRects[1] = new Rectangle(bx, cy+ch-44, bw, 32);
         drawRoundedButton(g2,bx,cy+ch-88,bw,36,"Yeniden Oyna  —  Space",C_ACCENT);
         drawRoundedButton(g2,bx,cy+ch-44,bw,32,"Ana Menü  —  Esc",new Color(55,65,90));
     }
@@ -850,9 +960,21 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         int k=e.getKeyCode();
         switch (state) {
             case MENU:
-                if (k==KeyEvent.VK_SPACE||k==KeyEvent.VK_ENTER) { initGame(); state=State.RUNNING; gameTimer.start(); }
-                else if (k==KeyEvent.VK_T) { wrapMode=!wrapMode; repaint(); }
-                else if (k==KeyEvent.VK_M) { sound.toggleMute(); repaint(); }
+                if (k == KeyEvent.VK_UP || k == KeyEvent.VK_W) {
+                    menuBtn = (menuBtn - 1 + MENU_BTN_COUNT) % MENU_BTN_COUNT;
+                    sound.play(SoundManager.SoundType.MENU_TICK); repaint();
+                } else if (k == KeyEvent.VK_DOWN || k == KeyEvent.VK_S) {
+                    menuBtn = (menuBtn + 1) % MENU_BTN_COUNT;
+                    sound.play(SoundManager.SoundType.MENU_TICK); repaint();
+                } else if (k == KeyEvent.VK_ENTER || k == KeyEvent.VK_SPACE) {
+                    activateMenuBtn();
+                } else if (k == KeyEvent.VK_M) {
+                    sound.toggleMute(); repaint();
+                } else if (k == KeyEvent.VK_T) {
+                    wrapMode = !wrapMode; repaint();
+                } else if (k == KeyEvent.VK_ESCAPE) {
+                    System.exit(0);
+                }
                 break;
             case RUNNING:
                 if      (k==KeyEvent.VK_UP   ||k==KeyEvent.VK_W) inputBuffer.push(Snake.UP);
@@ -873,6 +995,79 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
                 break;
         }
     }
+    private void activateMenuBtn() {
+        switch (menuBtn) {
+            case 0: // Başla
+                initGame(); state = State.RUNNING; gameTimer.start();
+                break;
+            case 1: // Duvar Geçişi toggle
+                wrapMode = !wrapMode;
+                sound.play(SoundManager.SoundType.MENU_TICK);
+                repaint();
+                break;
+            case 2: // Çıkış
+                sound.dispose();
+                System.exit(0);
+                break;
+        }
+    }
+
+    // ── Mouse ────────────────────────────────────────────────────
+    @Override
+    public void mouseClicked(MouseEvent e) {
+        if (state == State.MENU) {
+            int mx = e.getX(), my = e.getY() - HUD_H;
+            for (int i = 0; i < MENU_BTN_COUNT; i++) {
+                if (menuRects[i] != null && menuRects[i].contains(mx, my)) {
+                    menuBtn = i;
+                    activateMenuBtn();
+                    return;
+                }
+            }
+        }
+        if (state == State.GAME_OVER) {
+            int mx = e.getX(), my = e.getY() - HUD_H;
+            if (goRects[0] != null && goRects[0].contains(mx, my)) {
+                initGame(); state = State.RUNNING; gameTimer.start();
+            } else if (goRects[1] != null && goRects[1].contains(mx, my)) {
+                initGame(); state = State.MENU; repaint();
+            }
+        }
+    }
+
+    @Override
+    public void mouseMoved(MouseEvent e) {
+        if (state == State.MENU) {
+            int mx = e.getX(), my = e.getY() - HUD_H;
+            int prev = menuHover;
+            menuHover = -1;
+            for (int i = 0; i < MENU_BTN_COUNT; i++) {
+                if (menuRects[i] != null && menuRects[i].contains(mx, my)) {
+                    menuHover = i;
+                    break;
+                }
+            }
+            setCursor(menuHover >= 0
+                    ? Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
+                    : Cursor.getDefaultCursor());
+            if (menuHover != prev) repaint();
+        } else if (state == State.GAME_OVER) {
+            int mx = e.getX(), my = e.getY() - HUD_H;
+            boolean onBtn = (goRects[0] != null && goRects[0].contains(mx, my))
+                    || (goRects[1] != null && goRects[1].contains(mx, my));
+            setCursor(onBtn ? Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
+                    : Cursor.getDefaultCursor());
+        } else {
+            setCursor(Cursor.getDefaultCursor());
+        }
+    }
+
+    @Override public void mousePressed(MouseEvent e)  {}
+    @Override public void mouseReleased(MouseEvent e) {}
+    @Override public void mouseEntered(MouseEvent e)  {}
+    @Override public void mouseExited(MouseEvent e)   { menuHover = -1; repaint(); }
+    @Override public void mouseDragged(MouseEvent e)  {}
+
     @Override public void keyReleased(KeyEvent e) {}
     @Override public void keyTyped(KeyEvent e)    {}
 }
