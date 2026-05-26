@@ -13,9 +13,9 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
     static final int ROWS    = 24;
     static final int GRID_W  = CELL * COLS;
     static final int GRID_H  = CELL * ROWS;
-    static final int HUD_H   = 0;
+    static final int HUD_H   = 64;
     static final int PANEL_W = GRID_W;
-    static final int PANEL_H = GRID_H;
+    static final int PANEL_H = GRID_H + HUD_H;
 
     // ── Renkler ──────────────────────────────────────────────────
     private static final Color C_BG         = new Color(13,  15,  23);
@@ -296,10 +296,12 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
         Graphics2D g2 = setup(g);
         g2.translate(shakeX, shakeY);
 
-        drawGrid(g2);
-
         if (state == State.MENU)     { drawMenuOverlay(g2); g2.dispose(); return; }
         if (state == State.SETTINGS) { drawSettingsOverlay(g2); g2.dispose(); return; }
+
+        drawHUD(g2);
+        g2.translate(0, HUD_H);
+        drawGrid(g2);
 
         drawObstacles(g2);
         drawFood(g2);
@@ -325,13 +327,104 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
         return g2;
     }
 
-    // ── Grid (düz arka plan, çizgi yok) ──────────────────────────
+    // ── HUD ──────────────────────────────────────────────────────
+    private void drawHUD(Graphics2D g2) {
+        // Arka plan
+        g2.setColor(new Color(10, 13, 22));
+        g2.fillRect(0, 0, PANEL_W, HUD_H);
+
+        // Alt ayırıcı çizgi
+        g2.setPaint(new GradientPaint(
+                0, HUD_H - 1, new Color(52, 211, 153, 0),
+                PANEL_W / 2, HUD_H - 1, new Color(52, 211, 153, 60),
+                true
+        ));
+        g2.fillRect(0, HUD_H - 1, PANEL_W, 1);
+
+        int midX = PANEL_W / 2;
+        int topY = 18, botY = 46;
+
+        // ── Sol blok: PUAN ────────────────────────────────────────
+        int lx = 28;
+        g2.setFont(new Font(FF, Font.PLAIN, 11));
+        g2.setColor(C_TEXT_MUTED);
+        g2.drawString("PUAN", lx, topY);
+
+        g2.setFont(new Font(FF, Font.BOLD, 28));
+        g2.setColor(C_ACCENT);
+        g2.drawString(String.valueOf(score), lx, botY);
+
+        // ── Orta blok: SEVİYE + ilerleme ─────────────────────────
+        String lvlLabel = "SEVİYE  " + level;
+        g2.setFont(new Font(FF, Font.BOLD, 13));
+        FontMetrics fmL = g2.getFontMetrics();
+        int lvlW = fmL.stringWidth(lvlLabel);
+        g2.setColor(C_TEXT_MUTED);
+        g2.drawString(lvlLabel, midX - lvlW / 2, topY);
+
+        // İlerleme çubuğu (orta altında)
+        int barW = 120, barH = 5, barX = midX - barW / 2, barY = topY + 8;
+        float progress = Math.min(1f, (float)(score - (level - 1) * 80) / 80f);
+        g2.setColor(new Color(255, 255, 255, 12));
+        g2.fillRoundRect(barX, barY, barW, barH, barH, barH);
+        if (progress > 0) {
+            g2.setColor(C_ACCENT);
+            g2.fillRoundRect(barX, barY, (int)(barW * progress), barH, barH, barH);
+            // İlerleme parıltısı
+            g2.setColor(new Color(255, 255, 255, 60));
+            g2.fillRoundRect(barX, barY, (int)(barW * progress), barH / 2, barH, barH);
+        }
+
+        // Wrap badge (orta alt)
+        if (wrapMode) {
+            String wlbl = "WRAP";
+            g2.setFont(new Font(FF, Font.BOLD, 10));
+            FontMetrics fmW = g2.getFontMetrics();
+            int ww = fmW.stringWidth(wlbl) + 10;
+            int wx = midX - ww / 2, wy = barY + 12;
+            g2.setColor(new Color(C_INDIGO.getRed(), C_INDIGO.getGreen(), C_INDIGO.getBlue(), 30));
+            g2.fillRoundRect(wx, wy, ww, 14, 7, 7);
+            g2.setColor(C_INDIGO);
+            g2.drawString(wlbl, wx + 5, wy + 10);
+        }
+
+        // ── Sağ blok: EN YÜKSEK ───────────────────────────────────
+        int rx = PANEL_W - 28;
+        g2.setFont(new Font(FF, Font.PLAIN, 11));
+        FontMetrics fmHi = g2.getFontMetrics();
+        String hiLabel = "EN YÜKSEK";
+        g2.setColor(C_TEXT_MUTED);
+        g2.drawString(hiLabel, rx - fmHi.stringWidth(hiLabel), topY);
+
+        g2.setFont(new Font(FF, Font.BOLD, 28));
+        g2.setColor(C_WARN);
+        String hiStr = String.valueOf(scoreManager.getHighScore());
+        FontMetrics fmHiNum = g2.getFontMetrics();
+        g2.drawString(hiStr, rx - fmHiNum.stringWidth(hiStr), botY);
+
+        // Aktif kalkan göstergesi (sağ köşe üst)
+        if (state == State.RUNNING && powerUps != null
+                && powerUps.isActive(PowerUpManager.PowerUpType.SHIELD)) {
+            g2.setFont(new Font(FF, Font.BOLD, 10));
+            g2.setColor(C_PU_SHIELD);
+            g2.drawString("▲ KALKAN", rx - 52, topY);
+        }
+    }
+
+    // ── Grid (arka plan + ızgara çizgileri) ──────────────────────
     private void drawGrid(Graphics2D g2) {
+        // Arka plan
         g2.setPaint(new GradientPaint(0, 0, new Color(11, 14, 24),
-                0, GRID_H, new Color(14, 18, 30)));
+                0, GRID_H, new Color(13, 17, 28)));
         g2.fillRect(0, 0, GRID_W, GRID_H);
 
-        // Wrap modunda hafif kenar vurgusu
+        // Izgara çizgileri
+        g2.setColor(C_GRID);
+        g2.setStroke(new BasicStroke(0.5f));
+        for (int c = 1; c < COLS; c++) g2.drawLine(c * CELL, 0, c * CELL, GRID_H);
+        for (int r = 1; r < ROWS; r++) g2.drawLine(0, r * CELL, GRID_W, r * CELL);
+
+        // Wrap modunda kenar vurgusu
         if (wrapMode) {
             g2.setColor(new Color(C_INDIGO.getRed(), C_INDIGO.getGreen(), C_INDIGO.getBlue(), 50));
             g2.setStroke(new BasicStroke(2f));
