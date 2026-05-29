@@ -313,7 +313,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
 
         if (state == State.PAUSED)    drawPauseOverlay(g2);
         if (state == State.GAME_OVER) drawGameOverOverlay(g2);
-        if (state == State.RUNNING)   drawInGameScore(g2);
+        //if (state == State.RUNNING)   drawInGameScore(g2);
 
         g2.dispose();
     }
