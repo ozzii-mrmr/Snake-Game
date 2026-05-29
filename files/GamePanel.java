@@ -1283,7 +1283,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
     @Override
     public void mouseClicked(MouseEvent e) {
         if (state == State.MENU) {
-            int mx = e.getX(), my = e.getY() - HUD_H;
+            int mx = e.getX(), my = e.getY();
             for (int i = 0; i < MENU_BTN_COUNT; i++) {
                 if (menuRects[i] != null && menuRects[i].contains(mx, my)) {
                     menuBtn = i;
@@ -1305,7 +1305,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
     @Override
     public void mouseMoved(MouseEvent e) {
         if (state == State.MENU) {
-            int mx = e.getX(), my = e.getY() - HUD_H;
+            int mx = e.getX(), my = e.getY();
             int prev = menuHover;
             menuHover = -1;
             for (int i = 0; i < MENU_BTN_COUNT; i++) {
