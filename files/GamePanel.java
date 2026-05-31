@@ -74,8 +74,18 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
     private javax.swing.Timer gameTimer;
     private javax.swing.Timer animTimer;
 
-    // ── Seçenekler (menüden toggle edilir) ───────────────────────
+    // ── Seçenekler ───────────────────────────────────────────────
     private boolean wrapMode = false;
+
+    private int snakeColorIdx = 0;
+    private static final Color[] SNAKE_COLORS = {
+        new Color( 52, 211, 153),  // yeşil
+        new Color( 56, 189, 248),  // mavi
+        new Color(167, 139, 250),  // mor
+        new Color(251, 146,  60),  // turuncu
+        new Color(248, 113, 113),  // kırmızı
+        new Color(251, 191,  36),  // sarı
+    };
 
     // ── Durum ────────────────────────────────────────────────────
     private enum State { MENU, RUNNING, PAUSED, GAME_OVER, SETTINGS }
@@ -86,14 +96,15 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
     private int level    = 1;
     private int animTick = 0;
 
-    // Menu navigation (0=Başla, 1=Duvar Geçişi, 2=Ayarlar, 3=Çıkış)
+    // Menu navigation (0=Başla, 1=Ayarlar, 2=Çıkış)
     private int menuBtn   = 0;
     private int menuHover = -1;
-    private static final int MENU_BTN_COUNT = 4;
+    private static final int MENU_BTN_COUNT = 3;
 
-    private final Rectangle[] menuRects     = new Rectangle[MENU_BTN_COUNT];
-    private final Rectangle[] goRects       = new Rectangle[2];
-    private final Rectangle[] settingsRects = new Rectangle[3]; // 0=ses, 1=wrap, 2=geri
+    private final Rectangle[] menuRects      = new Rectangle[MENU_BTN_COUNT];
+    private final Rectangle[] goRects        = new Rectangle[2];
+    private final Rectangle[] settingsRects  = new Rectangle[3]; // 0=ses, 1=wrap, 2=geri
+    private final Rectangle[] colorSwatches  = new Rectangle[SNAKE_COLORS.length];
 
     // Death shake
     private int shakeFrames = 0, shakeX = 0, shakeY = 0;
@@ -504,8 +515,12 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
         Composite orig = g2.getComposite();
 
         boolean shielded = powerUps.isActive(PowerUpManager.PowerUpType.SHIELD);
-        Color headColor  = shielded ? blendColor(C_SNAKE_HEAD, C_PU_SHIELD, 0.5f) : C_SNAKE_HEAD;
-        Color glowColor  = shielded ? new Color(250, 204, 21, 50) : C_SNAKE_GLOW;
+        Color snakeBase  = SNAKE_COLORS[snakeColorIdx];
+        Color headColor  = shielded ? blendColor(snakeBase, C_PU_SHIELD, 0.5f) : snakeBase;
+        Color bodyColor  = darken(snakeBase, 0.72f);
+        Color tailColor  = darken(snakeBase, 0.28f);
+        Color glowColor  = shielded ? new Color(250, 204, 21, 50)
+                                    : new Color(snakeBase.getRed(), snakeBase.getGreen(), snakeBase.getBlue(), 40);
 
         // Baş görsel konumu (iki game tick arası interpolasyon)
         float[] hv = headVisualPos();
@@ -533,7 +548,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
             Point a = body.get(i), b = body.get(i - 1);
             if (Math.abs(a.x - b.x) > 1 || Math.abs(a.y - b.y) > 1) continue;
             float t = (float) i / Math.max(1, n - 1);
-            g2.setColor(blendColor(C_SNAKE_BODY, C_SNAKE_TAIL, t));
+            g2.setColor(blendColor(bodyColor, tailColor, t));
             g2.drawLine((int) vx[i], (int) vy[i], (int) vx[i - 1], (int) vy[i - 1]);
         }
 
@@ -543,7 +558,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
             if (Math.abs(last.x - prevTailPos.x) <= 1 && Math.abs(last.y - prevTailPos.y) <= 1) {
                 float alpha = (1.0f - tweenT) * 0.95f;
                 g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha));
-                g2.setColor(C_SNAKE_TAIL);
+                g2.setColor(tailColor);
                 g2.setStroke(new BasicStroke(sw, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
                 g2.drawLine((int) vx[n - 1], (int) vy[n - 1],
                         cx(prevTailPos.x), cy(prevTailPos.y));
@@ -832,14 +847,9 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
         int btnX = cx - btnW / 2;
         int btnStartY = logoY + 38;
 
-        String[] labels = {
-                "Başla",
-                "Duvar Geçişi  —  " + (wrapMode ? "Açık" : "Kapalı"),
-                "Ayarlar",
-                "Çıkış"
-        };
-        Color[]  accents = { C_ACCENT, C_INDIGO, new Color(251, 191, 36), C_DANGER };
-        String[] icons   = { "▶", "⟳", "⚙", "×" };
+        String[] labels = { "Başla", "Ayarlar", "Çıkış" };
+        Color[]  accents = { C_ACCENT, new Color(251, 191, 36), C_DANGER };
+        String[] icons   = { "▶", "⚙", "×" };
 
         for (int i = 0; i < MENU_BTN_COUNT; i++) {
             int by = btnStartY + i * (btnH + btnGap);
@@ -1122,7 +1132,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
         g2.setComposite(orig);
 
         // Üst başlık
-        int titleY = 70;
+        int titleY = 60;
         g2.setFont(new Font(FF, Font.BOLD, 28));
         g2.setColor(new Color(255, 255, 255, 220));
         FontMetrics fmT = g2.getFontMetrics();
@@ -1131,9 +1141,9 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
         g2.setColor(new Color(52, 211, 153, 60));
         g2.fillRect(cx - 28, titleY + 8, 56, 1);
 
-        // Kart
-        int cardW = 310, cardH = 180;
-        int cardX = cx - cardW / 2, cardY = titleY + 24;
+        // ── Ana kart ─────────────────────────────────────────────
+        int cardW = 310, cardH = 220;
+        int cardX = cx - cardW / 2, cardY = titleY + 22;
         g2.setColor(new Color(15, 20, 35, 200));
         g2.fillRoundRect(cardX, cardY, cardW, cardH, 16, 16);
         g2.setColor(new Color(255, 255, 255, 10));
@@ -1141,41 +1151,68 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
         g2.drawRoundRect(cardX, cardY, cardW, cardH, 16, 16);
 
         // Satır 0: Ses
-        drawSettingsRow(g2, cardX, cardY + 20, cardW, "Ses", !soundManager.isMuted(), C_ACCENT, 0);
+        drawSettingsRow(g2, cardX, cardY + 18, cardW, "Ses", !soundManager.isMuted(), C_ACCENT, 0);
 
-        // Ayırıcı
         g2.setColor(new Color(255, 255, 255, 8));
-        g2.fillRect(cardX + 20, cardY + 90, cardW - 40, 1);
+        g2.fillRect(cardX + 20, cardY + 78, cardW - 40, 1);
 
         // Satır 1: Duvar Geçişi
-        drawSettingsRow(g2, cardX, cardY + 100, cardW, "Duvar Geçişi", wrapMode, C_INDIGO, 1);
+        drawSettingsRow(g2, cardX, cardY + 85, cardW, "Duvar Geçişi", wrapMode, C_INDIGO, 1);
 
-        // Geri butonu
-        int bW = 160, bH = 40;
-        int bX = cx - bW/2, bY = cardY + cardH + 20;
+        g2.setColor(new Color(255, 255, 255, 8));
+        g2.fillRect(cardX + 20, cardY + 145, cardW - 40, 1);
+
+        // Satır 2: Yılan Rengi — renk swatchları
+        g2.setFont(new Font(FF, Font.PLAIN, 14));
+        g2.setColor(new Color(200, 210, 225));
+        g2.drawString("Yılan Rengi", cardX + 20, cardY + 168);
+
+        int swR = 13, swGap = 10;
+        int swTotal = SNAKE_COLORS.length * (swR * 2) + (SNAKE_COLORS.length - 1) * swGap;
+        int swStartX = cardX + cardW / 2 - swTotal / 2;
+        int swY = cardY + 194;
+        for (int i = 0; i < SNAKE_COLORS.length; i++) {
+            int sx = swStartX + i * (swR * 2 + swGap) + swR;
+            colorSwatches[i] = new Rectangle(sx - swR - 3, swY - swR - 3, (swR + 3) * 2, (swR + 3) * 2);
+            if (i == snakeColorIdx) {
+                g2.setColor(SNAKE_COLORS[i]);
+                g2.setStroke(new BasicStroke(2.5f));
+                g2.drawOval(sx - swR - 5, swY - swR - 5, (swR + 5) * 2, (swR + 5) * 2);
+            }
+            g2.setColor(SNAKE_COLORS[i]);
+            g2.fillOval(sx - swR, swY - swR, swR * 2, swR * 2);
+        }
+
+        // ── Yılan önizlemesi ─────────────────────────────────────
+        int pvX = cardX, pvY = cardY + cardH + 12, pvW = cardW, pvH = 78;
+        g2.setColor(new Color(10, 13, 22, 190));
+        g2.fillRoundRect(pvX, pvY, pvW, pvH, 12, 12);
+        g2.setColor(new Color(255, 255, 255, 8));
+        g2.setStroke(new BasicStroke(1f));
+        g2.drawRoundRect(pvX, pvY, pvW, pvH, 12, 12);
+        drawSnakePreview(g2, pvX, pvY, pvW, pvH);
+
+        // ── Geri butonu ──────────────────────────────────────────
+        int bW = 160, bH = 40, bX = cx - bW / 2, bY = pvY + pvH + 14;
         settingsRects[2] = new Rectangle(bX, bY, bW, bH);
         drawMenuBtn(g2, settingsRects[2], "‹", "Geri Dön", new Color(99, 102, 241), false, false);
 
-        // ESC hint
         g2.setFont(new Font(FF, Font.PLAIN, 10));
         g2.setColor(new Color(71, 85, 105));
         String hint = "ESC  →  Geri Dön";
         FontMetrics fmH = g2.getFontMetrics();
-        g2.drawString(hint, cx - fmH.stringWidth(hint)/2, bY + bH + 18);
+        g2.drawString(hint, cx - fmH.stringWidth(hint) / 2, bY + bH + 16);
     }
 
     private void drawSettingsRow(Graphics2D g2, int cardX, int y, int cardW,
                                  String label, boolean on, Color accent, int idx) {
-        // Etiket
         g2.setFont(new Font(FF, Font.PLAIN, 14));
         g2.setColor(new Color(200, 210, 225));
         g2.drawString(label, cardX + 20, y + 22);
 
-        // Toggle alanı
         int tW = 48, tH = 24, tX = cardX + cardW - 20 - tW, tY = y + 10;
         settingsRects[idx] = new Rectangle(tX, tY, tW, tH);
 
-        // Track
         g2.setColor(on ? new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 180)
                        : new Color(40, 50, 70));
         g2.fillRoundRect(tX, tY, tW, tH, tH, tH);
@@ -1183,18 +1220,51 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
         g2.setStroke(new BasicStroke(1f));
         g2.drawRoundRect(tX, tY, tW, tH, tH, tH);
 
-        // Knob
         int knobSize = tH - 6;
         int knobX = on ? tX + tW - knobSize - 3 : tX + 3;
         g2.setColor(Color.WHITE);
         g2.fillRoundRect(knobX, tY + 3, knobSize, knobSize, knobSize, knobSize);
 
-        // Durum metni
         g2.setFont(new Font(FF, Font.BOLD, 10));
         g2.setColor(on ? accent : new Color(80, 95, 115));
         String status = on ? "Açık" : "Kapalı";
         FontMetrics fm = g2.getFontMetrics();
         g2.drawString(status, tX - fm.stringWidth(status) - 8, tY + tH / 2 + fm.getAscent() / 2 - 2);
+    }
+
+    private void drawSnakePreview(Graphics2D g2, int pvX, int pvY, int pvW, int pvH) {
+        Color base  = SNAKE_COLORS[snakeColorIdx];
+        Color tail  = darken(base, 0.28f);
+        int segs = 14, segSz = 11, pad = 28;
+        float phase = animTick * 0.065f;
+        float amp   = pvH / 2f - segSz - 4;
+
+        Stroke prev = g2.getStroke();
+        g2.setStroke(new BasicStroke(segSz, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+
+        // Gövdeyi kuyruktan başa çiz (arkadan öne)
+        for (int i = segs - 1; i >= 1; i--) {
+            float t0 = (float) i       / (segs - 1);
+            float t1 = (float)(i - 1)  / (segs - 1);
+            float x0 = pvX + pad + t0 * (pvW - 2 * pad);
+            float y0 = pvY + pvH / 2f + (float) Math.sin(t0 * Math.PI * 2.2 + phase) * amp;
+            float x1 = pvX + pad + t1 * (pvW - 2 * pad);
+            float y1 = pvY + pvH / 2f + (float) Math.sin(t1 * Math.PI * 2.2 + phase) * amp;
+            g2.setColor(blendColor(tail, base, 1f - t0));
+            g2.drawLine((int) x0, (int) y0, (int) x1, (int) y1);
+        }
+
+        // Baş (en sağ segment)
+        float hx = pvX + pad;
+        float hy = pvY + pvH / 2f + (float) Math.sin(phase) * amp;
+        float hr2 = segSz / 2f + 1f;
+        g2.setColor(base);
+        g2.fill(new Ellipse2D.Float(hx - hr2, hy - hr2, hr2 * 2, hr2 * 2));
+        g2.setColor(new Color(255, 255, 255, 80));
+        float gr = hr2 * 0.38f;
+        g2.fill(new Ellipse2D.Float(hx - hr2 * 0.5f, hy - hr2 * 0.6f, gr * 2, gr * 2));
+
+        g2.setStroke(prev);
     }
 
     // ── Ortak çizim yardımcıları ─────────────────────────────────
@@ -1271,6 +1341,11 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
     private int cx(int col) { return col*CELL+CELL/2; }
     private int cy(int row) { return row*CELL+CELL/2; }
 
+    private Color darken(Color c, float factor) {
+        factor = Math.max(0, Math.min(1, factor));
+        return new Color((int)(c.getRed()*factor), (int)(c.getGreen()*factor), (int)(c.getBlue()*factor));
+    }
+
     private Color blendColor(Color a, Color b, float t) {
         t=Math.max(0,Math.min(1,t));
         return new Color(
@@ -1299,10 +1374,6 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
                     repaint();
                 } else if (k == KeyEvent.VK_ENTER || k == KeyEvent.VK_SPACE) {
                     activateMenuBtn();
-                } else if (k == KeyEvent.VK_M) {
-                    repaint();
-                } else if (k == KeyEvent.VK_T) {
-                    wrapMode = !wrapMode; repaint();
                 } else if (k == KeyEvent.VK_ESCAPE) {
                     System.exit(0);
                 }
@@ -1330,9 +1401,8 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
     private void activateMenuBtn() {
         switch (menuBtn) {
             case 0: initGame(); state = State.RUNNING; gameTimer.start(); break;
-            case 1: wrapMode = !wrapMode;  repaint(); break;
-            case 2: state = State.SETTINGS; repaint(); break;
-            case 3:  System.exit(0); break;
+            case 1: state = State.SETTINGS; repaint(); break;
+            case 2: System.exit(0); break;
         }
     }
 
@@ -1366,6 +1436,11 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
             } else if (settingsRects[2] != null && settingsRects[2].contains(mx, my)) {
                 state = State.MENU; repaint();
             }
+            for (int i = 0; i < colorSwatches.length; i++) {
+                if (colorSwatches[i] != null && colorSwatches[i].contains(mx, my)) {
+                    snakeColorIdx = i; repaint(); break;
+                }
+            }
         }
     }
 
@@ -1389,6 +1464,9 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
             int mx = e.getX(), my = e.getY();
             boolean onAny = false;
             for (Rectangle r : settingsRects) {
+                if (r != null && r.contains(mx, my)) { onAny = true; break; }
+            }
+            if (!onAny) for (Rectangle r : colorSwatches) {
                 if (r != null && r.contains(mx, my)) { onAny = true; break; }
             }
             setCursor(onAny ? Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
