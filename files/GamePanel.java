@@ -1119,7 +1119,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
         g2.setColor(new Color(7, 9, 18, 215));
         g2.fillRect(0, 0, GRID_W, GRID_H);
 
-        int cW = 340, cH = 380, cX = GRID_W/2 - cW/2, cY = GRID_H/2 - cH/2;
+        int cW = 340, cH = 460, cX = GRID_W/2 - cW/2, cY = GRID_H/2 - cH/2;
 
         // Ana kart
         g2.setColor(new Color(15, 20, 35));
