@@ -102,8 +102,10 @@ public class Snake {
     // ── Çarpışma ─────────────────────────────────────────────────
     public boolean collidesWithSelf() {
         Point head = body.getFirst();
-        for (int i = 1; i < body.size(); i++) {
-            if (head.equals(body.get(i))) return true;
+        java.util.Iterator<Point> it = body.iterator();
+        it.next(); // başı atla
+        while (it.hasNext()) {
+            if (head.equals(it.next())) return true;
         }
         return false;
     }
