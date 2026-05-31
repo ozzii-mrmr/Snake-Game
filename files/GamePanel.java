@@ -91,8 +91,9 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
     private int menuHover = -1;
     private static final int MENU_BTN_COUNT = 4;
 
-    private final Rectangle[] menuRects = new Rectangle[MENU_BTN_COUNT];
-    private final Rectangle[] goRects   = new Rectangle[2];
+    private final Rectangle[] menuRects     = new Rectangle[MENU_BTN_COUNT];
+    private final Rectangle[] goRects       = new Rectangle[2];
+    private final Rectangle[] settingsRects = new Rectangle[3]; // 0=ses, 1=wrap, 2=geri
 
     // Death shake
     private int shakeFrames = 0, shakeX = 0, shakeY = 0;
@@ -1131,7 +1132,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
         g2.fillRect(cx - 28, titleY + 8, 56, 1);
 
         // Kart
-        int cardW = 310, cardH = 320;
+        int cardW = 310, cardH = 180;
         int cardX = cx - cardW / 2, cardY = titleY + 24;
         g2.setColor(new Color(15, 20, 35, 200));
         g2.fillRoundRect(cardX, cardY, cardW, cardH, 16, 16);
@@ -1139,19 +1140,21 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
         g2.setStroke(new BasicStroke(1f));
         g2.drawRoundRect(cardX, cardY, cardW, cardH, 16, 16);
 
-        // Yakında etiketi
-        g2.setFont(new Font(FF, Font.PLAIN, 12));
-        g2.setColor(new Color(100, 116, 139));
-        String soon = "Ayarlar sayfası çok yakında...";
-        FontMetrics fmS = g2.getFontMetrics();
-        g2.drawString(soon, cx - fmS.stringWidth(soon)/2, cardY + cardH/2);
+        // Satır 0: Ses
+        drawSettingsRow(g2, cardX, cardY + 20, cardW, "Ses", !soundManager.isMuted(), C_ACCENT, 0);
+
+        // Ayırıcı
+        g2.setColor(new Color(255, 255, 255, 8));
+        g2.fillRect(cardX + 20, cardY + 90, cardW - 40, 1);
+
+        // Satır 1: Duvar Geçişi
+        drawSettingsRow(g2, cardX, cardY + 100, cardW, "Duvar Geçişi", wrapMode, C_INDIGO, 1);
 
         // Geri butonu
         int bW = 160, bH = 40;
         int bX = cx - bW/2, bY = cardY + cardH + 20;
-        Rectangle backRect = new Rectangle(bX, bY, bW, bH);
-        drawMenuBtn(g2, backRect, "‹", "Geri Dön", new Color(99, 102, 241),
-                false, false);
+        settingsRects[2] = new Rectangle(bX, bY, bW, bH);
+        drawMenuBtn(g2, settingsRects[2], "‹", "Geri Dön", new Color(99, 102, 241), false, false);
 
         // ESC hint
         g2.setFont(new Font(FF, Font.PLAIN, 10));
@@ -1159,6 +1162,39 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
         String hint = "ESC  →  Geri Dön";
         FontMetrics fmH = g2.getFontMetrics();
         g2.drawString(hint, cx - fmH.stringWidth(hint)/2, bY + bH + 18);
+    }
+
+    private void drawSettingsRow(Graphics2D g2, int cardX, int y, int cardW,
+                                 String label, boolean on, Color accent, int idx) {
+        // Etiket
+        g2.setFont(new Font(FF, Font.PLAIN, 14));
+        g2.setColor(new Color(200, 210, 225));
+        g2.drawString(label, cardX + 20, y + 22);
+
+        // Toggle alanı
+        int tW = 48, tH = 24, tX = cardX + cardW - 20 - tW, tY = y + 10;
+        settingsRects[idx] = new Rectangle(tX, tY, tW, tH);
+
+        // Track
+        g2.setColor(on ? new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 180)
+                       : new Color(40, 50, 70));
+        g2.fillRoundRect(tX, tY, tW, tH, tH, tH);
+        g2.setColor(on ? accent : new Color(70, 85, 105));
+        g2.setStroke(new BasicStroke(1f));
+        g2.drawRoundRect(tX, tY, tW, tH, tH, tH);
+
+        // Knob
+        int knobSize = tH - 6;
+        int knobX = on ? tX + tW - knobSize - 3 : tX + 3;
+        g2.setColor(Color.WHITE);
+        g2.fillRoundRect(knobX, tY + 3, knobSize, knobSize, knobSize, knobSize);
+
+        // Durum metni
+        g2.setFont(new Font(FF, Font.BOLD, 10));
+        g2.setColor(on ? accent : new Color(80, 95, 115));
+        String status = on ? "Açık" : "Kapalı";
+        FontMetrics fm = g2.getFontMetrics();
+        g2.drawString(status, tX - fm.stringWidth(status) - 8, tY + tH / 2 + fm.getAscent() / 2 - 2);
     }
 
     // ── Ortak çizim yardımcıları ─────────────────────────────────
@@ -1321,6 +1357,16 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
                 initGame(); state = State.MENU; repaint();
             }
         }
+        if (state == State.SETTINGS) {
+            int mx = e.getX(), my = e.getY();
+            if (settingsRects[0] != null && settingsRects[0].contains(mx, my)) {
+                soundManager.toggleMute(); repaint();
+            } else if (settingsRects[1] != null && settingsRects[1].contains(mx, my)) {
+                wrapMode = !wrapMode; repaint();
+            } else if (settingsRects[2] != null && settingsRects[2].contains(mx, my)) {
+                state = State.MENU; repaint();
+            }
+        }
     }
 
     @Override
@@ -1340,11 +1386,12 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
                     : Cursor.getDefaultCursor());
             if (menuHover != prev) repaint();
         } else if (state == State.SETTINGS) {
-            setCursor(Cursor.getDefaultCursor());
-            int mx = e.getX(), my = e.getY() - HUD_H;
-            boolean onBtn = (goRects[0] != null && goRects[0].contains(mx, my))
-                    || (goRects[1] != null && goRects[1].contains(mx, my));
-            setCursor(onBtn ? Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
+            int mx = e.getX(), my = e.getY();
+            boolean onAny = false;
+            for (Rectangle r : settingsRects) {
+                if (r != null && r.contains(mx, my)) { onAny = true; break; }
+            }
+            setCursor(onAny ? Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
                     : Cursor.getDefaultCursor());
         } else {
             setCursor(Cursor.getDefaultCursor());
