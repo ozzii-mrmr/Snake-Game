@@ -69,6 +69,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
     private PowerUpManager  powerUps;
     private InputBuffer     inputBuffer;
     private ScoreManager    scoreManager;
+    private SoundManager    soundManager;
 
     private javax.swing.Timer gameTimer;
     private javax.swing.Timer animTimer;
@@ -135,6 +136,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
         addMouseMotionListener(this);
 
         scoreManager = new ScoreManager();
+        soundManager = new SoundManager();
 
         gameTimer = new javax.swing.Timer(currentSpeed, this);
         animTimer = new javax.swing.Timer(16, e -> {
@@ -214,6 +216,9 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
             addPopup("+" + gain, newHead, pc);
             food.removeFood(newHead);
             food.spawnNormal(snake);
+            if      (eaten == Food.FoodType.SUPER)  soundManager.play(SoundManager.SoundType.EAT_SUPER);
+            else if (eaten == Food.FoodType.BONUS)  soundManager.play(SoundManager.SoundType.EAT_BONUS);
+            else                                    soundManager.play(SoundManager.SoundType.EAT_NORMAL);
             checkLevelUp();
         }
 
@@ -272,6 +277,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
                 gameTimer.setDelay(currentSpeed);
             obstacles.spawnForLevel(level, snake, food);
 
+            soundManager.play(SoundManager.SoundType.LEVEL_UP);
             levelUpTimer = LU_DURATION;
         }
     }
@@ -294,7 +300,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
         state = State.GAME_OVER;
         gameTimer.stop();
         scoreManager.add(score);
-
+        soundManager.play(SoundManager.SoundType.DEATH);
         shakeFrames = 18;
     }
 
@@ -1249,9 +1255,11 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
             case MENU:
                 if (k == KeyEvent.VK_UP || k == KeyEvent.VK_W) {
                     menuBtn = (menuBtn - 1 + MENU_BTN_COUNT) % MENU_BTN_COUNT;
+                    soundManager.play(SoundManager.SoundType.MENU_TICK);
                     repaint();
                 } else if (k == KeyEvent.VK_DOWN || k == KeyEvent.VK_S) {
                     menuBtn = (menuBtn + 1) % MENU_BTN_COUNT;
+                    soundManager.play(SoundManager.SoundType.MENU_TICK);
                     repaint();
                 } else if (k == KeyEvent.VK_ENTER || k == KeyEvent.VK_SPACE) {
                     activateMenuBtn();
