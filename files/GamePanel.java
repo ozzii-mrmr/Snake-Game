@@ -106,6 +106,12 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
     private final Rectangle[] settingsRects  = new Rectangle[3]; // 0=ses, 1=wrap, 2=geri
     private final Rectangle[] colorSwatches  = new Rectangle[SNAKE_COLORS.length];
 
+    // ── Ayarlar önizleme yılanı ───────────────────────────────────
+    private static final int PV_COLS = 26, PV_ROWS = 5, PV_CELL = 11, PV_STEP = 9;
+    private final java.util.LinkedList<Point> previewSnake = new java.util.LinkedList<>();
+    private int previewDir = Snake.RIGHT;
+    private boolean previewInit = false;
+
     // Death shake
     private int shakeFrames = 0, shakeX = 0, shakeY = 0;
     private final Random rng = new Random();
@@ -156,6 +162,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
             if (state == State.RUNNING && tweenT < 1.0f) {
                 tweenT = Math.min(1.0f, tweenT + 16.0f / currentSpeed);
             }
+            if (state == State.SETTINGS && animTick % PV_STEP == 0) updatePreviewSnake();
             if (shakeFrames > 0) {
                 shakeFrames--;
                 shakeX = (shakeFrames > 0) ? rng.nextInt(7) - 3 : 0;
@@ -858,18 +865,10 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
                     menuBtn == i, menuHover == i);
         }
 
-        // ── Klavye ipucu ─────────────────────────────────────────
-        int hintY = btnStartY + totalBtnH + 24;
-        g2.setFont(new Font(FF, Font.PLAIN, 13));
-        g2.setColor(new Color(71, 85, 105));
-        String hint = "↑ ↓  gezin   ·   Enter  onayla";
-        FontMetrics fmH = g2.getFontMetrics();
-        g2.drawString(hint, cx - fmH.stringWidth(hint)/2, hintY);
-
         // ── En iyi skorlar ───────────────────────────────────────
         if (scoreManager.size() > 0) {
             int[] tops = scoreManager.getTopScores();
-            int scY = hintY + 26;
+            int scY = btnStartY + totalBtnH + 18;
             int scW = 260, scH = 42;
             int scX = cx - scW / 2;
 
@@ -1196,12 +1195,6 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
         int bW = 160, bH = 40, bX = cx - bW / 2, bY = pvY + pvH + 14;
         settingsRects[2] = new Rectangle(bX, bY, bW, bH);
         drawMenuBtn(g2, settingsRects[2], "‹", "Geri Dön", new Color(99, 102, 241), false, false);
-
-        g2.setFont(new Font(FF, Font.PLAIN, 10));
-        g2.setColor(new Color(71, 85, 105));
-        String hint = "ESC  →  Geri Dön";
-        FontMetrics fmH = g2.getFontMetrics();
-        g2.drawString(hint, cx - fmH.stringWidth(hint) / 2, bY + bH + 16);
     }
 
     private void drawSettingsRow(Graphics2D g2, int cardX, int y, int cardW,
@@ -1233,38 +1226,115 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
     }
 
     private void drawSnakePreview(Graphics2D g2, int pvX, int pvY, int pvW, int pvH) {
-        Color base  = SNAKE_COLORS[snakeColorIdx];
-        Color tail  = darken(base, 0.28f);
-        int segs = 14, segSz = 11, pad = 28;
-        float phase = animTick * 0.065f;
-        float amp   = pvH / 2f - segSz - 4;
+        if (!previewInit) initPreviewSnake();
 
-        Stroke prev = g2.getStroke();
-        g2.setStroke(new BasicStroke(segSz, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        Color base = SNAKE_COLORS[snakeColorIdx];
+        Color tail = darken(base, 0.28f);
 
-        // Gövdeyi kuyruktan başa çiz (arkadan öne)
-        for (int i = segs - 1; i >= 1; i--) {
-            float t0 = (float) i       / (segs - 1);
-            float t1 = (float)(i - 1)  / (segs - 1);
-            float x0 = pvX + pad + t0 * (pvW - 2 * pad);
-            float y0 = pvY + pvH / 2f + (float) Math.sin(t0 * Math.PI * 2.2 + phase) * amp;
-            float x1 = pvX + pad + t1 * (pvW - 2 * pad);
-            float y1 = pvY + pvH / 2f + (float) Math.sin(t1 * Math.PI * 2.2 + phase) * amp;
-            g2.setColor(blendColor(tail, base, 1f - t0));
-            g2.drawLine((int) x0, (int) y0, (int) x1, (int) y1);
+        int offX = (pvW - PV_COLS * PV_CELL) / 2;
+        int offY = (pvH - PV_ROWS * PV_CELL) / 2;
+
+        // Izgara çizgileri
+        g2.setColor(new Color(255, 255, 255, 5));
+        g2.setStroke(new BasicStroke(0.5f));
+        for (int c = 1; c < PV_COLS; c++)
+            g2.drawLine(pvX+offX+c*PV_CELL, pvY+offY, pvX+offX+c*PV_CELL, pvY+offY+PV_ROWS*PV_CELL);
+        for (int r = 1; r < PV_ROWS; r++)
+            g2.drawLine(pvX+offX, pvY+offY+r*PV_CELL, pvX+offX+PV_COLS*PV_CELL, pvY+offY+r*PV_CELL);
+
+        // Yılan gövdesi
+        int n = previewSnake.size();
+        float sw = PV_CELL - 3f;
+        g2.setStroke(new BasicStroke(sw, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        for (int i = n - 1; i >= 1; i--) {
+            Point a = previewSnake.get(i), b = previewSnake.get(i - 1);
+            float t = (float) i / Math.max(1, n - 1);
+            int ax = pvX + offX + a.x * PV_CELL + PV_CELL / 2;
+            int ay = pvY + offY + a.y * PV_CELL + PV_CELL / 2;
+            int bx = pvX + offX + b.x * PV_CELL + PV_CELL / 2;
+            int by2 = pvY + offY + b.y * PV_CELL + PV_CELL / 2;
+            g2.setColor(blendColor(base, tail, t));
+            g2.drawLine(ax, ay, bx, by2);
         }
 
-        // Baş (en sağ segment)
-        float hx = pvX + pad;
-        float hy = pvY + pvH / 2f + (float) Math.sin(phase) * amp;
-        float hr2 = segSz / 2f + 1f;
+        // Baş
+        Point h = previewSnake.getFirst();
+        float hpx = pvX + offX + h.x * PV_CELL + PV_CELL / 2f;
+        float hpy = pvY + offY + h.y * PV_CELL + PV_CELL / 2f;
+        float hr  = sw / 2f + 1f;
         g2.setColor(base);
-        g2.fill(new Ellipse2D.Float(hx - hr2, hy - hr2, hr2 * 2, hr2 * 2));
+        g2.fill(new Ellipse2D.Float(hpx - hr, hpy - hr, hr * 2, hr * 2));
         g2.setColor(new Color(255, 255, 255, 80));
-        float gr = hr2 * 0.38f;
-        g2.fill(new Ellipse2D.Float(hx - hr2 * 0.5f, hy - hr2 * 0.6f, gr * 2, gr * 2));
+        float gr = hr * 0.38f;
+        g2.fill(new Ellipse2D.Float(hpx - hr * 0.5f, hpy - hr * 0.6f, gr * 2, gr * 2));
+    }
 
-        g2.setStroke(prev);
+    private void initPreviewSnake() {
+        previewSnake.clear();
+        int mx = PV_COLS / 2, my = PV_ROWS / 2;
+        for (int i = 0; i < 4; i++) previewSnake.addLast(new Point(mx - i, my));
+        previewDir  = Snake.RIGHT;
+        previewInit = true;
+    }
+
+    private void updatePreviewSnake() {
+        if (!previewInit) initPreviewSnake();
+        Point head = previewSnake.getFirst();
+
+        // %20 ihtimalle rastgele dön, yoksa düz git
+        int left  = pvTurnLeft(previewDir), right = pvTurnRight(previewDir);
+        int[] dirs = rng.nextInt(5) == 0
+                ? (rng.nextBoolean() ? new int[]{left, previewDir, right}
+                                     : new int[]{right, previewDir, left})
+                : (rng.nextBoolean() ? new int[]{previewDir, left, right}
+                                     : new int[]{previewDir, right, left});
+
+        for (int dir : dirs) {
+            Point next = pvNext(head, dir);
+            if (next != null && !pvHitsBody(next)) {
+                previewDir = dir;
+                previewSnake.addFirst(next);
+                previewSnake.removeLast();
+                return;
+            }
+        }
+        initPreviewSnake(); // sıkıştıysa sıfırla
+    }
+
+    private Point pvNext(Point p, int dir) {
+        int nx = p.x, ny = p.y;
+        switch (dir) {
+            case Snake.UP:    ny--; break;
+            case Snake.DOWN:  ny++; break;
+            case Snake.LEFT:  nx--; break;
+            default:          nx++; break;
+        }
+        return (nx < 0 || nx >= PV_COLS || ny < 0 || ny >= PV_ROWS) ? null : new Point(nx, ny);
+    }
+
+    private boolean pvHitsBody(Point p) {
+        int n = previewSnake.size();
+        for (int i = 0; i < n - 1; i++)
+            if (previewSnake.get(i).equals(p)) return true;
+        return false;
+    }
+
+    private int pvTurnLeft(int dir) {
+        switch (dir) {
+            case Snake.UP:    return Snake.LEFT;
+            case Snake.LEFT:  return Snake.DOWN;
+            case Snake.DOWN:  return Snake.RIGHT;
+            default:          return Snake.UP;
+        }
+    }
+
+    private int pvTurnRight(int dir) {
+        switch (dir) {
+            case Snake.UP:    return Snake.RIGHT;
+            case Snake.RIGHT: return Snake.DOWN;
+            case Snake.DOWN:  return Snake.LEFT;
+            default:          return Snake.UP;
+        }
     }
 
     // ── Ortak çizim yardımcıları ─────────────────────────────────
