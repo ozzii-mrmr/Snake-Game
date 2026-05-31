@@ -1281,8 +1281,9 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
                 else if (k==KeyEvent.VK_T) { wrapMode=!wrapMode; snake.setWrapAround(wrapMode,COLS,ROWS); repaint(); }
                 break;
             case PAUSED:
-                if      (k==KeyEvent.VK_P) { state=State.RUNNING; gameTimer.start(); }
-                else if (k==KeyEvent.VK_M) {  repaint(); }
+                if      (k==KeyEvent.VK_P)      { state=State.RUNNING; gameTimer.start(); }
+                else if (k==KeyEvent.VK_ESCAPE) { gameTimer.stop(); initGame(); state=State.MENU; repaint(); }
+                else if (k==KeyEvent.VK_M)      { repaint(); }
                 break;
             case GAME_OVER:
                 if (k==KeyEvent.VK_SPACE) { initGame(); state=State.RUNNING; gameTimer.start(); }
