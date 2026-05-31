@@ -114,7 +114,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
 
     // ── Logo yılanı (SNAKE harfleri — önceden tanımlı rotalar) ───
     private static final int LOGO_CELL = 13, LOGO_COLS = 5, LOGO_ROWS = 5;
-    private static final int LOGO_GAP = 2, LOGO_LETTERS = 5, LOGO_SN = 7;
+    private static final int LOGO_GAP = 1, LOGO_LETTERS = 5, LOGO_SN = 7;
     private static final int LOGO_STEP = 8, LOGO_PAUSE = 25;
 
     // Her yılanın hangi harfe ait olduğu (S=0,N=1,A=2,K=3,E=4)
