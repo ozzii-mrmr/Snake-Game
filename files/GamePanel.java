@@ -107,7 +107,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
     private final Rectangle[] colorSwatches  = new Rectangle[SNAKE_COLORS.length];
 
     // ── İsim girişi ──────────────────────────────────────────────
-    private String    playerName      = "";
+    private String    playerName      = "Oyuncu";
     private boolean   nameFieldActive = false;
     private Rectangle nameFieldRect   = null;
     private static final int NAME_MAX_LEN = 12;
@@ -901,11 +901,10 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
         g2.setColor(nameFieldActive ? C_ACCENT : C_TEXT_MUTED);
         g2.drawString("OYUNCU ADI", nfX + 14, nfY + 13);
 
-        boolean placeholder = playerName.isEmpty() && !nameFieldActive;
         g2.setFont(new Font(FF, Font.BOLD, 15));
         FontMetrics fmNF = g2.getFontMetrics();
-        g2.setColor(placeholder ? new Color(55, 70, 95) : C_TEXT);
-        String displayName = placeholder ? "İsminizi girin..." : playerName;
+        g2.setColor(C_TEXT);
+        String displayName = playerName;
         g2.drawString(displayName, nfX + 14, nfY + 33);
 
         if (nameFieldActive && animTick % 28 < 14) {
