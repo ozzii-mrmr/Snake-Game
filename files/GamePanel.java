@@ -106,20 +106,46 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
     private final Rectangle[] settingsRects  = new Rectangle[3]; // 0=ses, 1=wrap, 2=geri
     private final Rectangle[] colorSwatches  = new Rectangle[SNAKE_COLORS.length];
 
-    // ── Logo yılanı (SNAKE harfleri) ─────────────────────────────
-    private static final int LOGO_CELL = 12, LOGO_COLS = 7, LOGO_ROWS = 7;
-    private static final int LOGO_GAP = 1, LOGO_N = 5, LOGO_STEP = 10;
-    // Her harfin piksel konumları (5×5 ızgarada, sınır için +1 offset uygulanır)
-    private static final int[][][] LETTER_PIXELS = {
-        {{0,1},{0,2},{0,3},{0,4},{1,0},{2,1},{2,2},{2,3},{2,4},{3,4},{4,0},{4,1},{4,2},{4,3}}, // S
-        {{0,0},{0,4},{1,0},{1,1},{1,4},{2,0},{2,2},{2,4},{3,0},{3,3},{3,4},{4,0},{4,4}},        // N
-        {{0,1},{0,2},{0,3},{1,0},{1,4},{2,0},{2,1},{2,2},{2,3},{2,4},{3,0},{3,4},{4,0},{4,4}},  // A
-        {{0,0},{0,4},{1,0},{1,3},{2,0},{2,1},{2,2},{3,0},{3,3},{4,0},{4,4}},                    // K
-        {{0,0},{0,1},{0,2},{0,3},{0,4},{1,0},{2,0},{2,1},{2,2},{2,3},{3,0},{4,0},{4,1},{4,2},{4,3},{4,4}} // E
+    // ── Logo yılanı (SNAKE harfleri — önceden tanımlı rotalar) ───
+    private static final int LOGO_CELL = 13, LOGO_COLS = 5, LOGO_ROWS = 5;
+    private static final int LOGO_GAP = 2, LOGO_LETTERS = 5, LOGO_SN = 7;
+    private static final int LOGO_STEP = 8, LOGO_PAUSE = 25;
+
+    // Her yılanın hangi harfe ait olduğu (S=0,N=1,A=2,K=3,E=4)
+    private static final int[] LOGO_LETTER_IDX = {0, 1, 2, 3, 3, 4, 4};
+
+    // Önceden tanımlı rotalar — {satır, sütun} formatında bitişik adımlar
+    private static final int[][][] LOGO_PATHS = {
+        // 0: S (17 hücre, alttan üste)
+        {{4,0},{4,1},{4,2},{4,3},{4,4},{3,4},{2,4},{2,3},{2,2},{2,1},{2,0},{1,0},{0,0},{0,1},{0,2},{0,3},{0,4}},
+        // 1: N (17 hücre)
+        {{4,0},{3,0},{2,0},{1,0},{0,0},{0,1},{1,1},{1,2},{2,2},{2,3},{3,3},{4,3},{4,4},{3,4},{2,4},{1,4},{0,4}},
+        // 2: A (20 hücre)
+        {{4,0},{3,0},{2,0},{1,0},{0,0},{0,1},{0,2},{0,3},{0,4},{1,4},{2,4},{3,4},{4,4},{4,3},{3,3},{2,3},{2,2},{2,1},{3,1},{4,1}},
+        // 3: K — dikey bar (5 hücre)
+        {{0,0},{1,0},{2,0},{3,0},{4,0}},
+        // 4: K — V şekli (9 hücre)
+        {{0,4},{1,4},{1,3},{2,3},{2,2},{3,2},{3,3},{4,3},{4,4}},
+        // 5: E — dış C + üst/alt bar (13 hücre)
+        {{0,4},{0,3},{0,2},{0,1},{0,0},{1,0},{2,0},{3,0},{4,0},{4,1},{4,2},{4,3},{4,4}},
+        // 6: E — orta bar (4 hücre)
+        {{2,4},{2,3},{2,2},{2,1}},
     };
-    private final java.util.ArrayList<java.util.LinkedList<Point>> logoSnakes = new java.util.ArrayList<>();
-    private final java.util.ArrayList<java.util.HashSet<Point>>    logoFood   = new java.util.ArrayList<>();
-    private final int[] logoDir = new int[LOGO_N];
+
+    // Her yılana görsel yem noktaları (path index'i)
+    private static final int[][] LOGO_FOOD_IDX = {
+        {3, 7, 11, 15},    // S
+        {3, 7, 11, 15},    // N
+        {3, 8, 13, 17},    // A
+        {1, 3},            // K dikey
+        {2, 5, 7},         // K V
+        {2, 6, 9, 12},     // E dış
+        {1, 3},            // E orta
+    };
+
+    private int[]   logoStep;
+    private boolean[] logoDone;
+    private int logoPauseTick;
     private boolean logoInit = false;
 
     // ── Ayarlar önizleme yılanı ───────────────────────────────────
@@ -842,7 +868,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
         g2.setComposite(orig);
 
         // ── SNAKE logo animasyonu ─────────────────────────────────
-        int logoW = (LOGO_N * (LOGO_COLS + LOGO_GAP) - LOGO_GAP) * LOGO_CELL;
+        int logoW = (LOGO_LETTERS * (LOGO_COLS + LOGO_GAP) - LOGO_GAP) * LOGO_CELL;
         int logoStartX = (W - logoW) / 2;
         int logoStartY = 22;
         drawLogoSnakes(g2, logoStartX, logoStartY);
@@ -1328,139 +1354,85 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
     // ── Logo yılanı metodları ─────────────────────────────────────
 
     private void initLogoSnakes() {
-        logoSnakes.clear(); logoFood.clear();
-        for (int s = 0; s < LOGO_N; s++) {
-            java.util.LinkedList<Point> body = new java.util.LinkedList<>();
-            int sx = 1, sy = LOGO_ROWS - 1;
-            body.addLast(new Point(sx + 2, sy));
-            body.addLast(new Point(sx + 1, sy));
-            body.addLast(new Point(sx,     sy));
-            logoSnakes.add(body);
-            logoDir[s] = Snake.RIGHT;
-            java.util.HashSet<Point> food = new java.util.HashSet<>();
-            logoFood.add(food);
-            respawnLogoFood(s);
-        }
-        logoInit = true;
-    }
-
-    private void respawnLogoFood(int s) {
-        logoFood.get(s).clear();
-        for (int[] p : LETTER_PIXELS[s])
-            logoFood.get(s).add(new Point(p[1] + 1, p[0] + 1));
+        logoStep      = new int[LOGO_SN];
+        logoDone      = new boolean[LOGO_SN];
+        logoPauseTick = 0;
+        logoInit      = true;
     }
 
     private void updateLogoSnakes() {
         if (!logoInit) initLogoSnakes();
-        for (int s = 0; s < LOGO_N; s++) {
-            java.util.LinkedList<Point> body = logoSnakes.get(s);
-            java.util.HashSet<Point> food = logoFood.get(s);
-            if (food.isEmpty()) respawnLogoFood(s);
 
-            Point head = body.getFirst();
-
-            // En yakın yemi bul
-            Point target = null; int minDist = Integer.MAX_VALUE;
-            for (Point fp : food) {
-                int d = Math.abs(fp.x - head.x) + Math.abs(fp.y - head.y);
-                if (d < minDist) { minDist = d; target = fp; }
+        boolean allDone = true;
+        for (int s = 0; s < LOGO_SN; s++) {
+            if (!logoDone[s]) {
+                allDone = false;
+                int maxStep = LOGO_PATHS[s].length - 1;
+                if (logoStep[s] < maxStep) logoStep[s]++;
+                else                       logoDone[s] = true;
             }
+        }
 
-            int[] cands;
-            if (target != null) {
-                int dx = target.x - head.x, dy = target.y - head.y;
-                int h2 = dx >= 0 ? Snake.RIGHT : Snake.LEFT;
-                int v2 = dy >= 0 ? Snake.DOWN  : Snake.UP;
-                cands = Math.abs(dx) >= Math.abs(dy)
-                    ? new int[]{h2, v2, pvTurnLeft(logoDir[s]), pvTurnRight(logoDir[s])}
-                    : new int[]{v2, h2, pvTurnLeft(logoDir[s]), pvTurnRight(logoDir[s])};
-            } else {
-                cands = new int[]{logoDir[s], pvTurnLeft(logoDir[s]), pvTurnRight(logoDir[s])};
-            }
-
-            for (int dir : cands) {
-                if (isOppLogoDir(logoDir[s], dir)) continue;
-                Point next = nextPosLogo(head, dir);
-                if (!logoBodyHit(next, body)) {
-                    logoDir[s] = dir;
-                    boolean ate = food.remove(next);
-                    body.addFirst(next);
-                    if (!ate) body.removeLast();
-                    break;
-                }
+        if (allDone) {
+            logoPauseTick++;
+            if (logoPauseTick >= LOGO_PAUSE) {
+                for (int s = 0; s < LOGO_SN; s++) { logoStep[s] = 0; logoDone[s] = false; }
+                logoPauseTick = 0;
             }
         }
     }
 
     private void drawLogoSnakes(Graphics2D g2, int startX, int startY) {
         if (!logoInit) initLogoSnakes();
-        Color base = SNAKE_COLORS[snakeColorIdx];
-        Color snkT = darken(base, 0.28f);
+        Color base  = SNAKE_COLORS[snakeColorIdx];
+        Color snkT  = darken(base, 0.28f);
+        float sw    = LOGO_CELL - 4f;
+        Stroke saved = g2.getStroke();
 
-        for (int s = 0; s < LOGO_N; s++) {
-            int gx = startX + s * (LOGO_COLS + LOGO_GAP) * LOGO_CELL;
-            int gy = startY;
+        for (int s = 0; s < LOGO_SN; s++) {
+            int letterIdx = LOGO_LETTER_IDX[s];
+            int gx   = startX + letterIdx * (LOGO_COLS + LOGO_GAP) * LOGO_CELL;
+            int gy   = startY;
+            int step = logoStep[s];
+            int[][] path     = LOGO_PATHS[s];
+            int[]   foodIdx  = LOGO_FOOD_IDX[s];
 
-            // Yemler (harf şeklinde)
-            for (Point fp : logoFood.get(s)) {
-                float fx = gx + fp.x * LOGO_CELL + LOGO_CELL / 2f;
-                float fy = gy + fp.y * LOGO_CELL + LOGO_CELL / 2f;
-                glow(g2, (int)fx, (int)fy, C_FOOD_N, 7, 2);
-                g2.setColor(C_FOOD_N);
-                g2.fill(new Ellipse2D.Float(fx - 3.5f, fy - 3.5f, 7, 7));
+            // Yem noktaları (kafa geçmemiş indexler)
+            for (int fi : foodIdx) {
+                if (fi > step && fi < path.length) {
+                    float fx = gx + path[fi][1] * LOGO_CELL + LOGO_CELL / 2f;
+                    float fy = gy + path[fi][0] * LOGO_CELL + LOGO_CELL / 2f;
+                    glow(g2, (int)fx, (int)fy, C_FOOD_N, 6, 2);
+                    g2.setColor(C_FOOD_N);
+                    g2.fill(new Ellipse2D.Float(fx - 3f, fy - 3f, 6f, 6f));
+                }
             }
 
-            // Gövde
-            java.util.LinkedList<Point> body = logoSnakes.get(s);
-            int n = body.size();
-            float sw = LOGO_CELL - 4f;
-            Stroke prevStroke = g2.getStroke();
+            // Gövde segmentleri (tail → head)
             g2.setStroke(new BasicStroke(sw, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-            for (int i = n - 1; i >= 1; i--) {
-                Point a = body.get(i), b = body.get(i - 1);
-                if (Math.abs(a.x - b.x) > 1 || Math.abs(a.y - b.y) > 1) continue;
-                int ax = gx + a.x * LOGO_CELL + LOGO_CELL / 2;
-                int ay = gy + a.y * LOGO_CELL + LOGO_CELL / 2;
-                int bx = gx + b.x * LOGO_CELL + LOGO_CELL / 2;
-                int by2 = gy + b.y * LOGO_CELL + LOGO_CELL / 2;
-                g2.setColor(blendColor(base, snkT, (float) i / Math.max(1, n - 1)));
+            for (int i = step; i >= 1; i--) {
+                int[] a = path[i], b = path[i - 1];
+                int ax  = gx + a[1] * LOGO_CELL + LOGO_CELL / 2;
+                int ay  = gy + a[0] * LOGO_CELL + LOGO_CELL / 2;
+                int bx  = gx + b[1] * LOGO_CELL + LOGO_CELL / 2;
+                int by2 = gy + b[0] * LOGO_CELL + LOGO_CELL / 2;
+                float t = step > 0 ? (float)(step - i) / step : 0f;
+                g2.setColor(blendColor(base, snkT, t));
                 g2.drawLine(ax, ay, bx, by2);
             }
+
             // Baş
-            Point h = body.getFirst();
-            float hpx = gx + h.x * LOGO_CELL + LOGO_CELL / 2f;
-            float hpy = gy + h.y * LOGO_CELL + LOGO_CELL / 2f;
+            int[] hp  = path[step];
+            float hpx = gx + hp[1] * LOGO_CELL + LOGO_CELL / 2f;
+            float hpy = gy + hp[0] * LOGO_CELL + LOGO_CELL / 2f;
             float hr  = sw / 2f + 1f;
             g2.setColor(base);
             g2.fill(new Ellipse2D.Float(hpx - hr, hpy - hr, hr * 2, hr * 2));
             g2.setColor(new Color(255, 255, 255, 80));
             float gr = hr * 0.38f;
             g2.fill(new Ellipse2D.Float(hpx - hr * 0.5f, hpy - hr * 0.6f, gr * 2, gr * 2));
-            g2.setStroke(prevStroke);
         }
-    }
-
-    private Point nextPosLogo(Point p, int dir) {
-        int nx = p.x, ny = p.y;
-        switch (dir) {
-            case Snake.UP:    ny--; break;
-            case Snake.DOWN:  ny++; break;
-            case Snake.LEFT:  nx--; break;
-            default:          nx++; break;
-        }
-        return new Point((nx + LOGO_COLS) % LOGO_COLS, (ny + LOGO_ROWS) % LOGO_ROWS);
-    }
-
-    private boolean logoBodyHit(Point p, java.util.LinkedList<Point> body) {
-        int n = body.size();
-        for (int i = 0; i < n - 1; i++)
-            if (body.get(i).equals(p)) return true;
-        return false;
-    }
-
-    private boolean isOppLogoDir(int d1, int d2) {
-        return (d1 == Snake.UP && d2 == Snake.DOWN) || (d1 == Snake.DOWN && d2 == Snake.UP)
-            || (d1 == Snake.LEFT && d2 == Snake.RIGHT) || (d1 == Snake.RIGHT && d2 == Snake.LEFT);
+        g2.setStroke(saved);
     }
 
     private int pvTurnLeft(int dir) {
