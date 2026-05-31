@@ -189,6 +189,11 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
 
         Point next  = peekNext();
         Food.FoodType eaten = food.getFoodAt(next);
+
+        // Kuyruk kaybolma animasyonu için hareketten önce kaydet
+        prevTailPos = (eaten == null) ? snake.getBody().getLast().copy() : null;
+        tweenT = 0f;
+
         Point newHead = snake.move(eaten != null);
 
         // Çarpışma kontrolleri
