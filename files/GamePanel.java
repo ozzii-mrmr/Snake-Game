@@ -222,6 +222,13 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
         obstacles.tick();
         powerUps.tick(snake, food, steps);
         popups.removeIf(p -> !p.tick());
+
+        // SLOW efekti bittiyse hızı geri yükle
+        int targetDelay = powerUps.isActive(PowerUpManager.PowerUpType.SLOW)
+                ? Math.max(180, currentSpeed * 2) : currentSpeed;
+        if (gameTimer.getDelay() != targetDelay) {
+            gameTimer.setDelay(targetDelay);
+        }
     }
 
     private void applyPowerUp(PowerUpManager.PowerUpType type, Point pos) {
