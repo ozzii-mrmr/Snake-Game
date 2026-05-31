@@ -106,6 +106,12 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
     private final Rectangle[] settingsRects  = new Rectangle[3]; // 0=ses, 1=wrap, 2=geri
     private final Rectangle[] colorSwatches  = new Rectangle[SNAKE_COLORS.length];
 
+    // ── İsim girişi ──────────────────────────────────────────────
+    private String    playerName      = "";
+    private boolean   nameFieldActive = false;
+    private Rectangle nameFieldRect   = null;
+    private static final int NAME_MAX_LEN = 12;
+
     // ── Logo yılanı (SNAKE harfleri — önceden tanımlı rotalar) ───
     private static final int LOGO_CELL = 13, LOGO_COLS = 5, LOGO_ROWS = 5;
     private static final int LOGO_GAP = 2, LOGO_LETTERS = 5, LOGO_SN = 7;
@@ -361,7 +367,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
     private void endGame() {
         state = State.GAME_OVER;
         gameTimer.stop();
-        scoreManager.add(score);
+        scoreManager.add(score, playerName);
         soundManager.play(SoundManager.SoundType.DEATH);
         shakeFrames = 18;
     }
@@ -862,33 +868,61 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
         g2.setPaint(new GradientPaint(0, 0, new Color(7, 9, 18),
                 0, H, new Color(12, 16, 28)));
         g2.fillRect(0, 0, W, H);
-
-        // Sadece sağ-alt köşe glow (sol üstte glow yok)
         drawCornerGlow(g2, W, H, new Color(99, 102, 241, 18));
         g2.setComposite(orig);
 
         // ── SNAKE logo animasyonu ─────────────────────────────────
         int logoW = (LOGO_LETTERS * (LOGO_COLS + LOGO_GAP) - LOGO_GAP) * LOGO_CELL;
         int logoStartX = (W - logoW) / 2;
-        int logoStartY = 22;
+        int logoStartY = 42;
         drawLogoSnakes(g2, logoStartX, logoStartY);
 
-        // Başlık altı ince çizgi
-        int decY = logoStartY + LOGO_ROWS * LOGO_CELL + 8;
+        // Alt ayırıcı
+        int decY = logoStartY + LOGO_ROWS * LOGO_CELL + 12;
         for (int i = 0; i < 3; i++) {
             g2.setColor(new Color(52, 211, 153, 70 - i * 22));
             g2.fillRect(cx - (24 - i * 7), decY + i * 3, (24 - i * 7) * 2, 1);
         }
 
+        // ── İsim alanı ───────────────────────────────────────────
+        int nfW = 280, nfH = 46, nfX = cx - nfW / 2, nfY = decY + 14;
+        nameFieldRect = new Rectangle(nfX, nfY, nfW, nfH);
+
+        g2.setColor(new Color(14, 18, 32, 220));
+        g2.fillRoundRect(nfX, nfY, nfW, nfH, 10, 10);
+        Color nfBorder = nameFieldActive
+                ? new Color(C_ACCENT.getRed(), C_ACCENT.getGreen(), C_ACCENT.getBlue(), 200)
+                : new Color(50, 65, 90);
+        g2.setColor(nfBorder);
+        g2.setStroke(new BasicStroke(nameFieldActive ? 1.5f : 1f));
+        g2.drawRoundRect(nfX, nfY, nfW, nfH, 10, 10);
+
+        g2.setFont(new Font(FF, Font.PLAIN, 10));
+        g2.setColor(nameFieldActive ? C_ACCENT : C_TEXT_MUTED);
+        g2.drawString("OYUNCU ADI", nfX + 14, nfY + 13);
+
+        boolean placeholder = playerName.isEmpty() && !nameFieldActive;
+        g2.setFont(new Font(FF, Font.BOLD, 15));
+        FontMetrics fmNF = g2.getFontMetrics();
+        g2.setColor(placeholder ? new Color(55, 70, 95) : C_TEXT);
+        String displayName = placeholder ? "İsminizi girin..." : playerName;
+        g2.drawString(displayName, nfX + 14, nfY + 33);
+
+        if (nameFieldActive && animTick % 28 < 14) {
+            int curX = nfX + 14 + fmNF.stringWidth(playerName);
+            g2.setColor(C_ACCENT);
+            g2.fillRect(curX, nfY + 19, 2, 16);
+        }
+
         // ── Buton kartları ───────────────────────────────────────
-        int btnW = 280, btnH = 52, btnGap = 10;
+        int btnW = 280, btnH = 54, btnGap = 10;
         int totalBtnH = MENU_BTN_COUNT * btnH + (MENU_BTN_COUNT - 1) * btnGap;
         int btnX = cx - btnW / 2;
-        int btnStartY = decY + 18;
+        int btnStartY = nfY + nfH + 14;
 
-        String[] labels = { "Başla", "Ayarlar", "Çıkış" };
+        String[] labels  = { "Başla", "Ayarlar", "Çıkış" };
         Color[]  accents = { C_ACCENT, new Color(251, 191, 36), C_DANGER };
-        String[] icons   = { "▶", "⚙", "×" };
+        String[] icons   = { "▶", "⚙", "✕" };
 
         for (int i = 0; i < MENU_BTN_COUNT; i++) {
             int by = btnStartY + i * (btnH + btnGap);
@@ -897,29 +931,45 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
                     menuBtn == i, menuHover == i);
         }
 
-        // ── En iyi skorlar ───────────────────────────────────────
-        if (scoreManager.size() > 0) {
-            int[] tops = scoreManager.getTopScores();
+        // ── Skor tablosu ─────────────────────────────────────────
+        ScoreManager.ScoreEntry[] tops = scoreManager.getTopEntries();
+        if (tops.length > 0) {
+            int rows = Math.min(tops.length, 3);
+            int scW = 280, scX = cx - scW / 2;
             int scY = btnStartY + totalBtnH + 18;
-            int scW = 260, scH = 42;
-            int scX = cx - scW / 2;
+            int scH = 22 + rows * 32 + 10;
 
-            g2.setColor(new Color(15, 20, 35, 220));
+            g2.setColor(new Color(14, 18, 32, 220));
             g2.fillRoundRect(scX, scY, scW, scH, 12, 12);
             g2.setColor(new Color(255, 255, 255, 10));
             g2.setStroke(new BasicStroke(1f));
             g2.drawRoundRect(scX, scY, scW, scH, 12, 12);
 
-            int cols = Math.min(tops.length, 3);
-            int colW = scW / cols;
-            for (int i = 0; i < cols; i++) {
-                boolean gold = (i == 0);
-                g2.setFont(gold ? new Font(FF, Font.BOLD, 15) : new Font(FF, Font.PLAIN, 13));
-                g2.setColor(gold ? C_WARN : new Color(71, 85, 105));
-                FontMetrics fmC = g2.getFontMetrics();
-                String s = (i+1) + ".  " + tops[i];
-                int sx = scX + i * colW + colW/2 - fmC.stringWidth(s)/2;
-                g2.drawString(s, sx, scY + scH/2 + fmC.getAscent()/2 - 2);
+            g2.setFont(new Font(FF, Font.BOLD, 10));
+            g2.setColor(C_TEXT_MUTED);
+            drawCenteredStr(g2, "EN İYİ SKORLAR", cx, scY + 16);
+
+            Color[] rankColors = { C_WARN, new Color(192, 200, 210), new Color(188, 120, 80) };
+            for (int i = 0; i < rows; i++) {
+                ScoreManager.ScoreEntry en = tops[i];
+                int ry = scY + 22 + i * 32 + 22;
+                boolean isFirst = (i == 0);
+                Color rc = rankColors[i];
+
+                g2.setFont(new Font(FF, Font.BOLD, isFirst ? 14 : 13));
+                g2.setColor(rc);
+                g2.drawString((i + 1) + ".", scX + 14, ry);
+
+                String nm = en.name.length() > 11 ? en.name.substring(0, 11) : en.name;
+                g2.setFont(new Font(FF, isFirst ? Font.BOLD : Font.PLAIN, isFirst ? 14 : 13));
+                g2.setColor(isFirst ? C_TEXT : new Color(160, 175, 195));
+                g2.drawString(nm, scX + 38, ry);
+
+                g2.setFont(new Font(FF, Font.BOLD, isFirst ? 15 : 13));
+                g2.setColor(rc);
+                FontMetrics fmS = g2.getFontMetrics();
+                String sv = String.valueOf(en.score);
+                g2.drawString(sv, scX + scW - 16 - fmS.stringWidth(sv), ry);
             }
         }
     }
@@ -970,9 +1020,9 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
 
         // İkon
         int midY = r.y + r.height / 2;
-        g2.setFont(new Font(FF, Font.BOLD, 14));
+        g2.setFont(new Font(FF, Font.BOLD, 20));
         FontMetrics fmI = g2.getFontMetrics();
-        int iconAlpha = sel ? 255 : hover ? 200 : 130;
+        int iconAlpha = sel ? 255 : hover ? 200 : 150;
         g2.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), iconAlpha));
         g2.drawString(icon, r.x + 18, midY + fmI.getAscent() / 2 - 2);
 
@@ -1101,27 +1151,35 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
         drawStatCard(g2, cX + 24, sY+sGap*2, cW - 48, "UZUNLUK", String.valueOf(snake.getLength()), C_TEXT_MUTED);
 
         // En iyi skorlar
-        int[] tops = scoreManager.getTopScores();
+        ScoreManager.ScoreEntry[] tops = scoreManager.getTopEntries();
         if (tops.length > 0) {
             int divY = sY + sGap * 3 + 4;
             g2.setColor(new Color(255, 255, 255, 10));
             g2.fillRect(cX + 30, divY, cW - 60, 1);
 
-            g2.setFont(new Font(FF, Font.PLAIN, 12));
+            g2.setFont(new Font(FF, Font.BOLD, 10));
             g2.setColor(C_TEXT_MUTED);
-            FontMetrics fmS = g2.getFontMetrics();
-            String lbl = "EN İYİ SKORLAR";
-            g2.drawString(lbl, GRID_W/2 - fmS.stringWidth(lbl)/2, divY + 18);
+            drawCenteredStr(g2, "EN İYİ SKORLAR", GRID_W / 2, divY + 16);
 
-            int cols = Math.min(tops.length, 3), colW = (cW - 60) / cols;
-            for (int i = 0; i < cols; i++) {
-                boolean gold = (i == 0);
-                g2.setFont(gold ? new Font(FF, Font.BOLD, 15) : new Font(FF, Font.PLAIN, 13));
-                g2.setColor(gold ? C_WARN : C_TEXT_MUTED);
+            Color[] rankColors = { C_WARN, new Color(192, 200, 210), new Color(188, 120, 80) };
+            int rows = Math.min(tops.length, 3);
+            int lix = cX + 30, riw = cW - 60;
+            for (int i = 0; i < rows; i++) {
+                ScoreManager.ScoreEntry en = tops[i];
+                int ry = divY + 20 + i * 24 + 16;
+                Color rc = rankColors[i];
+                g2.setFont(new Font(FF, Font.BOLD, 13));
+                g2.setColor(rc);
+                g2.drawString((i + 1) + ".", lix, ry);
+                String nm = en.name.length() > 10 ? en.name.substring(0, 10) : en.name;
+                g2.setFont(new Font(FF, Font.PLAIN, 13));
+                g2.setColor(i == 0 ? C_TEXT : new Color(150, 165, 185));
+                g2.drawString(nm, lix + 26, ry);
+                g2.setFont(new Font(FF, Font.BOLD, 13));
+                g2.setColor(rc);
                 FontMetrics fmC = g2.getFontMetrics();
-                String s = (i+1) + ".  " + tops[i];
-                int sx = cX + 30 + i * colW + colW/2 - fmC.stringWidth(s)/2;
-                g2.drawString(s, sx, divY + 38);
+                String sv = String.valueOf(en.score);
+                g2.drawString(sv, lix + riw - fmC.stringWidth(sv), ry);
             }
         }
 
@@ -1550,18 +1608,28 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
                 if (k == KeyEvent.VK_ESCAPE) { state = State.MENU; repaint(); }
                 break;
             case MENU:
-                if (k == KeyEvent.VK_UP || k == KeyEvent.VK_W) {
-                    menuBtn = (menuBtn - 1 + MENU_BTN_COUNT) % MENU_BTN_COUNT;
-                    soundManager.play(SoundManager.SoundType.MENU_TICK);
-                    repaint();
-                } else if (k == KeyEvent.VK_DOWN || k == KeyEvent.VK_S) {
-                    menuBtn = (menuBtn + 1) % MENU_BTN_COUNT;
-                    soundManager.play(SoundManager.SoundType.MENU_TICK);
-                    repaint();
-                } else if (k == KeyEvent.VK_ENTER || k == KeyEvent.VK_SPACE) {
-                    activateMenuBtn();
-                } else if (k == KeyEvent.VK_ESCAPE) {
-                    System.exit(0);
+                if (nameFieldActive) {
+                    if (k == KeyEvent.VK_ESCAPE || k == KeyEvent.VK_ENTER) {
+                        nameFieldActive = false;
+                        repaint();
+                    } else if (k == KeyEvent.VK_BACK_SPACE && !playerName.isEmpty()) {
+                        playerName = playerName.substring(0, playerName.length() - 1);
+                        repaint();
+                    }
+                } else {
+                    if (k == KeyEvent.VK_UP || k == KeyEvent.VK_W) {
+                        menuBtn = (menuBtn - 1 + MENU_BTN_COUNT) % MENU_BTN_COUNT;
+                        soundManager.play(SoundManager.SoundType.MENU_TICK);
+                        repaint();
+                    } else if (k == KeyEvent.VK_DOWN || k == KeyEvent.VK_S) {
+                        menuBtn = (menuBtn + 1) % MENU_BTN_COUNT;
+                        soundManager.play(SoundManager.SoundType.MENU_TICK);
+                        repaint();
+                    } else if (k == KeyEvent.VK_ENTER || k == KeyEvent.VK_SPACE) {
+                        activateMenuBtn();
+                    } else if (k == KeyEvent.VK_ESCAPE) {
+                        System.exit(0);
+                    }
                 }
                 break;
             case RUNNING:
@@ -1597,6 +1665,12 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
     public void mouseClicked(MouseEvent e) {
         if (state == State.MENU) {
             int mx = e.getX(), my = e.getY();
+            if (nameFieldRect != null && nameFieldRect.contains(mx, my)) {
+                nameFieldActive = true;
+                repaint();
+                return;
+            }
+            nameFieldActive = false;
             for (int i = 0; i < MENU_BTN_COUNT; i++) {
                 if (menuRects[i] != null && menuRects[i].contains(mx, my)) {
                     menuBtn = i;
@@ -1669,5 +1743,16 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
     @Override public void mouseDragged(MouseEvent e)  {}
 
     @Override public void keyReleased(KeyEvent e) {}
-    @Override public void keyTyped(KeyEvent e)    {}
+
+    @Override
+    public void keyTyped(KeyEvent e) {
+        if (state == State.MENU && nameFieldActive) {
+            char c = e.getKeyChar();
+            if (c != KeyEvent.CHAR_UNDEFINED && !Character.isISOControl(c)
+                    && playerName.length() < NAME_MAX_LEN) {
+                playerName += c;
+                repaint();
+            }
+        }
+    }
 }

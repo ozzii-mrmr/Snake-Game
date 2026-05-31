@@ -6,92 +6,61 @@ import java.util.Map;
  * ScoreManager.java
  *
  * VERİ YAPISI: TreeMap<Integer, String>
- *   - Anahtar (key)  : puan (Integer)  → TreeMap otomatik sıralar
- *   - Değer  (value) : etiket ("1. Oyun", "2. Oyun" …)
+ *   - Anahtar (key)  : puan → otomatik sıralı
+ *   - Değer  (value) : oyuncu adı
  *
- * Neden TreeMap?
- *   - Her put() sonrası liste anahtara göre sıralı kalır → O(log n)
- *   - En yüksek skora erişim: lastKey() → O(log n)
- *   - HashMap ile saklasaydık skor tablosunu her seferinde
- *     kendimiz sıralamamız gerekirdi → O(n log n)
- *
- * Dosya formatı (scores.txt):
- *   120
- *   95
- *   80
- *   ...  (her satır bir puan, büyükten küçüğe)
+ * Dosya formatı:  puan:ad   (örn. 240:Ali)
+ * Eski format (sadece sayı) de okunabilir.
  */
 public class ScoreManager {
 
-    private static final int   MAX_ENTRIES  = 5;
-    private static final String SAVE_FILE   = "scores.txt";
-
-    /**
-     * TreeMap<Integer, String>
-     * Puanlar küçükten büyüğe sıralı tutulur.
-     * En yüksek = lastKey(), en düşük = firstKey().
-     *
-     * NOT: Aynı puan iki kez girilirse üzerine yazar (key unique).
-     * Bu yüzden value'ya sıra numarası yerine oturum etiketi koyuyoruz.
-     */
-    private TreeMap<Integer, String> scores;
-    private int sessionCount = 0;
-
-    // ── Kurucu ───────────────────────────────────────────────────
-    public ScoreManager() {
-        scores = new TreeMap<>();
-        load();
+    public static class ScoreEntry {
+        public final int    score;
+        public final String name;
+        ScoreEntry(int s, String n) { score = s; name = n; }
     }
 
-    // ── Puan ekleme ──────────────────────────────────────────────
+    private static final int    MAX_ENTRIES = 5;
+    private static final String SAVE_FILE   = "scores.txt";
 
-    /**
-     * Yeni skoru ekler.
-     * TreeMap sıralı tuttuğu için ekstra sort() gerekmez.
-     * MAX_ENTRIES aşılırsa en düşük skor otomatik silinir.
-     */
-    public void add(int score) {
+    private TreeMap<Integer, String> scores = new TreeMap<>();
+
+    public ScoreManager() { load(); }
+
+    public void add(int score, String name) {
         if (score <= 0) return;
-        sessionCount++;
-        scores.put(score, "Oyun #" + sessionCount);
-
-        // Kapasite aşıldıysa en küçük skoru çıkar
-        while (scores.size() > MAX_ENTRIES) {
-            scores.pollFirstEntry(); // en küçük → O(log n)
-        }
+        String n = (name == null || name.trim().isEmpty()) ? "Oyuncu" : name.trim();
+        scores.put(score, n);
+        while (scores.size() > MAX_ENTRIES) scores.pollFirstEntry();
         save();
     }
 
-    /** En yüksek skoru döndürür. */
     public int getHighScore() {
-        return scores.isEmpty() ? 0 : scores.lastKey(); // O(log n)
+        return scores.isEmpty() ? 0 : scores.lastKey();
     }
 
-    /** Skoru skor tablosuna girecek mi? */
     public boolean isTopScore(int score) {
         if (scores.size() < MAX_ENTRIES) return true;
         return score > scores.firstKey();
     }
 
-    /** Sıralı skor listesi — en yüksekten en düşüğe */
-    public int[] getTopScores() {
-        int[] arr = new int[scores.size()];
-        int i = scores.size() - 1;
-        for (int key : scores.keySet()) {
-            arr[i--] = key;
+    /** En yüksekten en düşüğe sıralı kayıtlar. */
+    public ScoreEntry[] getTopEntries() {
+        int n = scores.size();
+        ScoreEntry[] arr = new ScoreEntry[n];
+        int i = n - 1;
+        for (Map.Entry<Integer, String> e : scores.entrySet()) {
+            arr[i--] = new ScoreEntry(e.getKey(), e.getValue());
         }
         return arr;
     }
 
     public int size() { return scores.size(); }
 
-    // ── Dosya I/O ────────────────────────────────────────────────
-
     private void save() {
         try (PrintWriter pw = new PrintWriter(new FileWriter(SAVE_FILE))) {
-            // Büyükten küçüğe yaz (descendingKeySet)
             for (int key : scores.descendingKeySet()) {
-                pw.println(key);
+                pw.println(key + ":" + scores.get(key).replace(":", "_"));
             }
         } catch (IOException ignored) {}
     }
@@ -101,12 +70,17 @@ public class ScoreManager {
         if (!f.exists()) return;
         try (BufferedReader br = new BufferedReader(new FileReader(f))) {
             String line;
-            int idx = 0;
-            while ((line = br.readLine()) != null && idx < MAX_ENTRIES) {
+            while ((line = br.readLine()) != null && scores.size() < MAX_ENTRIES) {
+                line = line.trim();
+                if (line.isEmpty()) continue;
+                int sep = line.indexOf(':');
                 try {
-                    int val = Integer.parseInt(line.trim());
-                    scores.put(val, "Kayıtlı");
-                    idx++;
+                    if (sep > 0) {
+                        scores.put(Integer.parseInt(line.substring(0, sep)),
+                                   line.substring(sep + 1));
+                    } else {
+                        scores.put(Integer.parseInt(line), "Oyuncu");
+                    }
                 } catch (NumberFormatException ignored) {}
             }
         } catch (IOException ignored) {}
