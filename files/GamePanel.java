@@ -1215,9 +1215,10 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
         // Arka plan
         g2.setPaint(new GradientPaint(0, 0, new Color(7, 9, 18), 0, H, new Color(12, 16, 28)));
         g2.fillRect(0, 0, W, H);
+        Color snakeCol = SNAKE_COLORS[snakeColorIdx];
         Composite orig = g2.getComposite();
-        drawCornerGlow(g2, 0, 0, new Color(99, 102, 241, 14));
-        drawCornerGlow(g2, W, H, new Color(52, 211, 153, 12));
+        drawCornerGlow(g2, 0, 0, new Color(snakeCol.getRed(), snakeCol.getGreen(), snakeCol.getBlue(), 18));
+        drawCornerGlow(g2, W, H, new Color(snakeCol.getRed(), snakeCol.getGreen(), snakeCol.getBlue(), 12));
         g2.setComposite(orig);
 
         // Üst başlık
@@ -1227,7 +1228,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
         FontMetrics fmT = g2.getFontMetrics();
         String t = "Ayarlar";
         g2.drawString(t, cx - fmT.stringWidth(t)/2, titleY);
-        g2.setColor(new Color(52, 211, 153, 60));
+        g2.setColor(new Color(snakeCol.getRed(), snakeCol.getGreen(), snakeCol.getBlue(), 60));
         g2.fillRect(cx - 28, titleY + 8, 56, 1);
 
         // ── Ana kart ─────────────────────────────────────────────
@@ -1240,13 +1241,13 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
         g2.drawRoundRect(cardX, cardY, cardW, cardH, 16, 16);
 
         // Satır 0: Ses
-        drawSettingsRow(g2, cardX, cardY + 18, cardW, "Ses", !soundManager.isMuted(), C_ACCENT, 0);
+        drawSettingsRow(g2, cardX, cardY + 18, cardW, "Ses", !soundManager.isMuted(), snakeCol, 0);
 
         g2.setColor(new Color(255, 255, 255, 8));
         g2.fillRect(cardX + 20, cardY + 78, cardW - 40, 1);
 
         // Satır 1: Duvar Geçişi
-        drawSettingsRow(g2, cardX, cardY + 85, cardW, "Duvar Geçişi", wrapMode, C_INDIGO, 1);
+        drawSettingsRow(g2, cardX, cardY + 85, cardW, "Duvar Geçişi", wrapMode, snakeCol, 1);
 
         g2.setColor(new Color(255, 255, 255, 8));
         g2.fillRect(cardX + 20, cardY + 145, cardW - 40, 1);
@@ -1284,7 +1285,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
         // ── Geri butonu ──────────────────────────────────────────
         int bW = 160, bH = 40, bX = cx - bW / 2, bY = pvY + pvH + 14;
         settingsRects[2] = new Rectangle(bX, bY, bW, bH);
-        drawMenuBtn(g2, settingsRects[2], "‹", "Geri Dön", new Color(99, 102, 241), false, false);
+        drawMenuBtn(g2, settingsRects[2], "‹", "Geri Dön", SNAKE_COLORS[snakeColorIdx], false, false);
     }
 
     private void drawSettingsRow(Graphics2D g2, int cardX, int y, int cardW,
