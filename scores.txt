@@ -1,5 +1,5 @@
-380
-330
-290
-280
-270
+380:Oyuncu
+330:Oyuncu
+290:Oyuncu
+280:Oyuncu
+270:Oyuncu

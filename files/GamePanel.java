@@ -1692,7 +1692,9 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
             if (settingsRects[0] != null && settingsRects[0].contains(mx, my)) {
                 soundManager.toggleMute(); repaint();
             } else if (settingsRects[1] != null && settingsRects[1].contains(mx, my)) {
-                wrapMode = !wrapMode; repaint();
+                wrapMode = !wrapMode;
+                snake.setWrapAround(wrapMode, COLS, ROWS);
+                repaint();
             } else if (settingsRects[2] != null && settingsRects[2].contains(mx, my)) {
                 state = State.MENU; repaint();
             }
