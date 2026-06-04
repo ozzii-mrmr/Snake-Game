@@ -1,16 +1,11 @@
 import java.io.*;
-import java.util.TreeMap;
-import java.util.Map;
 
 /**
  * ScoreManager.java
  *
- * VERİ YAPISI: TreeMap<Integer, String>
- *   - Anahtar (key)  : puan → otomatik sıralı
- *   - Değer  (value) : oyuncu adı
- *
- * Dosya formatı:  puan:ad   (örn. 240:Ali)
- * Eski format (sadece sayı) de okunabilir.
+ * VERİ YAPISI: MyTreeMap<Integer, String>  (java.util.TreeMap yerine)
+ *   Anahtarlar (puanlar) otomatik sıralı tutulur → O(log n)
+ *   En yüksek skor: lastKey() → O(log n)
  */
 public class ScoreManager {
 
@@ -23,7 +18,7 @@ public class ScoreManager {
     private static final int    MAX_ENTRIES = 5;
     private static final String SAVE_FILE   = "scores.txt";
 
-    private TreeMap<Integer, String> scores = new TreeMap<>();
+    private MyTreeMap<Integer, String> scores = new MyTreeMap<>();
 
     public ScoreManager() { load(); }
 
@@ -44,13 +39,12 @@ public class ScoreManager {
         return score > scores.firstKey();
     }
 
-    /** En yüksekten en düşüğe sıralı kayıtlar. */
     public ScoreEntry[] getTopEntries() {
         int n = scores.size();
         ScoreEntry[] arr = new ScoreEntry[n];
         int i = n - 1;
-        for (Map.Entry<Integer, String> e : scores.entrySet()) {
-            arr[i--] = new ScoreEntry(e.getKey(), e.getValue());
+        for (MyTreeMap.Entry<Integer, String> e : scores.entrySet()) {
+            arr[i--] = new ScoreEntry(e.key, e.value);
         }
         return arr;
     }
@@ -59,14 +53,14 @@ public class ScoreManager {
 
     private void save() {
         try (PrintWriter pw = new PrintWriter(new FileWriter(SAVE_FILE))) {
-            for (int key : scores.descendingKeySet()) {
+            for (Integer key : scores.descendingKeySet()) {
                 pw.println(key + ":" + scores.get(key).replace(":", "_"));
             }
         } catch (IOException ignored) {}
     }
 
     private void load() {
-        File f = new File(SAVE_FILE);
+        java.io.File f = new java.io.File(SAVE_FILE);
         if (!f.exists()) return;
         try (BufferedReader br = new BufferedReader(new FileReader(f))) {
             String line;
@@ -75,12 +69,8 @@ public class ScoreManager {
                 if (line.isEmpty()) continue;
                 int sep = line.indexOf(':');
                 try {
-                    if (sep > 0) {
-                        scores.put(Integer.parseInt(line.substring(0, sep)),
-                                   line.substring(sep + 1));
-                    } else {
-                        scores.put(Integer.parseInt(line), "Oyuncu");
-                    }
+                    if (sep > 0) scores.put(Integer.parseInt(line.substring(0, sep)), line.substring(sep+1));
+                    else         scores.put(Integer.parseInt(line), "Oyuncu");
                 } catch (NumberFormatException ignored) {}
             }
         } catch (IOException ignored) {}

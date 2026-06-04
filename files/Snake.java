@@ -1,15 +1,12 @@
-import java.util.LinkedList;
-
 /**
  * Snake.java
  *
- * VERİ YAPISI: LinkedList<Point>
+ * VERİ YAPISI: MyLinkedList<Point>  (java.util.LinkedList yerine)
  *   - Baş (head) → listenin ilk elemanı  (index 0)
  *   - Kuyruk (tail) → listenin son elemanı
  *
- * Yeni özellikler:
- *   - wrapAround: duvardan geçince karşı taraftan çıkış
- *   - shrink()  : kuyruğu kısaltan güç-up için
+ * Neden MyLinkedList?
+ *   addFirst / removeLast → O(1)  (ArrayList'te O(n) olurdu)
  */
 public class Snake {
 
@@ -18,17 +15,15 @@ public class Snake {
     public static final int LEFT  = 2;
     public static final int RIGHT = 3;
 
-    private LinkedList<Point> body;
+    private MyLinkedList<Point> body;
     private int direction;
     private int nextDirection;
 
-    // Wrap-around modu (GamePanel tarafından set edilir)
     private boolean wrapAround = false;
     private int gridW, gridH;
 
-    // ── Kurucu ───────────────────────────────────────────────────
     public Snake(int startX, int startY) {
-        body = new LinkedList<>();
+        body = new MyLinkedList<>();
         body.addLast(new Point(startX,     startY));
         body.addLast(new Point(startX - 1, startY));
         body.addLast(new Point(startX - 2, startY));
@@ -36,20 +31,17 @@ public class Snake {
         nextDirection = RIGHT;
     }
 
-    // ── Wrap-around yapılandırma ──────────────────────────────────
     public void setWrapAround(boolean enabled, int gridW, int gridH) {
         this.wrapAround = enabled;
         this.gridW      = gridW;
         this.gridH      = gridH;
     }
 
-    // ── Hareket ──────────────────────────────────────────────────
     public Point move(boolean grow) {
         direction = nextDirection;
         Point head    = body.getFirst();
         Point newHead = calculateNewHead(head);
 
-        // Wrap-around: sınır dışına çıkarsa karşı taraftan gir
         if (wrapAround) {
             newHead.x = (newHead.x + gridW) % gridW;
             newHead.y = (newHead.y + gridH) % gridH;
@@ -70,7 +62,6 @@ public class Snake {
         }
     }
 
-    // ── Yön ──────────────────────────────────────────────────────
     public void setDirection(int newDir) {
         if (isOpposite(direction, newDir)) return;
         nextDirection = newDir;
@@ -87,19 +78,13 @@ public class Snake {
                 || (d1 == RIGHT && d2 == LEFT);
     }
 
-    // ── Güç-up: SHRINK ───────────────────────────────────────────
-    /**
-     * Kuyruğu `amount` kadar kısaltır.
-     * Minimum uzunluk 3'te tutulur.
-     */
     public void shrink(int amount) {
         int target = Math.max(3, body.size() - amount);
         while (body.size() > target) {
-            body.removeLast(); // LinkedList → O(1)
+            body.removeLast();
         }
     }
 
-    // ── Çarpışma ─────────────────────────────────────────────────
     public boolean collidesWithSelf() {
         Point head = body.getFirst();
         java.util.Iterator<Point> it = body.iterator();
@@ -112,11 +97,10 @@ public class Snake {
 
     public boolean contains(Point p) { return body.contains(p); }
 
-    // ── Erişimciler ──────────────────────────────────────────────
-    public Point             getHead()          { return body.getFirst(); }
-    public LinkedList<Point> getBody()          { return body; }
-    public int               getLength()        { return body.size(); }
-    public int               getDirection()     { return direction; }
-    public int               getNextDirection() { return nextDirection; }
-    public boolean           isWrapAround()     { return wrapAround; }
+    public Point              getHead()          { return body.getFirst(); }
+    public MyLinkedList<Point> getBody()          { return body; }
+    public int                getLength()        { return body.size(); }
+    public int                getDirection()     { return direction; }
+    public int                getNextDirection() { return nextDirection; }
+    public boolean            isWrapAround()     { return wrapAround; }
 }

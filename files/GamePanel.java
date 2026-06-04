@@ -79,12 +79,12 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
 
     private int snakeColorIdx = 0;
     private static final Color[] SNAKE_COLORS = {
-        new Color( 52, 211, 153),  // yeşil
-        new Color( 56, 189, 248),  // mavi
-        new Color(167, 139, 250),  // mor
-        new Color(251, 146,  60),  // turuncu
-        new Color(248, 113, 113),  // kırmızı
-        new Color(251, 191,  36),  // sarı
+            new Color( 52, 211, 153),  // yeşil
+            new Color( 56, 189, 248),  // mavi
+            new Color(167, 139, 250),  // mor
+            new Color(251, 146,  60),  // turuncu
+            new Color(248, 113, 113),  // kırmızı
+            new Color(251, 191,  36),  // sarı
     };
 
     // ── Durum ────────────────────────────────────────────────────
@@ -122,31 +122,31 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
 
     // Önceden tanımlı rotalar — {satır, sütun} formatında bitişik adımlar
     private static final int[][][] LOGO_PATHS = {
-        // 0: S (17 hücre, alttan üste)
-        {{4,0},{4,1},{4,2},{4,3},{4,4},{3,4},{2,4},{2,3},{2,2},{2,1},{2,0},{1,0},{0,0},{0,1},{0,2},{0,3},{0,4}},
-        // 1: N (17 hücre)
-        {{4,0},{3,0},{2,0},{1,0},{0,0},{0,1},{1,1},{1,2},{2,2},{2,3},{3,3},{4,3},{4,4},{3,4},{2,4},{1,4},{0,4}},
-        // 2: A (20 hücre)
-        {{4,0},{3,0},{2,0},{1,0},{0,0},{0,1},{0,2},{0,3},{0,4},{1,4},{2,4},{3,4},{4,4},{4,3},{3,3},{2,3},{2,2},{2,1},{3,1},{4,1}},
-        // 3: K — dikey bar (5 hücre)
-        {{0,0},{1,0},{2,0},{3,0},{4,0}},
-        // 4: K — V şekli (11 hücre)
-        {{0,4},{0,3},{1,3},{1,2},{2,2},{2,1},{3,1},{3,2},{4,2},{4,3},{4,4}},
-        // 5: E — dış C + üst/alt bar (13 hücre)
-        {{0,4},{0,3},{0,2},{0,1},{0,0},{1,0},{2,0},{3,0},{4,0},{4,1},{4,2},{4,3},{4,4}},
-        // 6: E — orta bar (4 hücre)
-        {{2,4},{2,3},{2,2},{2,1}},
+            // 0: S (17 hücre, alttan üste)
+            {{4,0},{4,1},{4,2},{4,3},{4,4},{3,4},{2,4},{2,3},{2,2},{2,1},{2,0},{1,0},{0,0},{0,1},{0,2},{0,3},{0,4}},
+            // 1: N (17 hücre)
+            {{4,0},{3,0},{2,0},{1,0},{0,0},{0,1},{1,1},{1,2},{2,2},{2,3},{3,3},{4,3},{4,4},{3,4},{2,4},{1,4},{0,4}},
+            // 2: A (20 hücre)
+            {{4,0},{3,0},{2,0},{1,0},{0,0},{0,1},{0,2},{0,3},{0,4},{1,4},{2,4},{3,4},{4,4},{4,3},{3,3},{2,3},{2,2},{2,1},{3,1},{4,1}},
+            // 3: K — dikey bar (5 hücre)
+            {{0,0},{1,0},{2,0},{3,0},{4,0}},
+            // 4: K — V şekli (11 hücre)
+            {{0,4},{0,3},{1,3},{1,2},{2,2},{2,1},{3,1},{3,2},{4,2},{4,3},{4,4}},
+            // 5: E — dış C + üst/alt bar (13 hücre)
+            {{0,4},{0,3},{0,2},{0,1},{0,0},{1,0},{2,0},{3,0},{4,0},{4,1},{4,2},{4,3},{4,4}},
+            // 6: E — orta bar (4 hücre)
+            {{2,4},{2,3},{2,2},{2,1}},
     };
 
     // Her yılana görsel yem noktaları (path index'i)
     private static final int[][] LOGO_FOOD_IDX = {
-        {3, 7, 11, 15},    // S
-        {3, 7, 11, 15},    // N
-        {3, 8, 13, 17},    // A
-        {1, 3},            // K dikey
-        {2, 5, 8, 10},     // K V
-        {2, 6, 9, 12},     // E dış
-        {1, 3},            // E orta
+            {3, 7, 11, 15},    // S
+            {3, 7, 11, 15},    // N
+            {3, 8, 13, 17},    // A
+            {1, 3},            // K dikey
+            {2, 5, 8, 10},     // K V
+            {2, 6, 9, 12},     // E dış
+            {1, 3},            // E orta
     };
 
     private int[]   logoStep;
@@ -156,7 +156,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
 
     // ── Ayarlar önizleme yılanı ───────────────────────────────────
     private static final int PV_COLS = 26, PV_ROWS = 5, PV_CELL = 11, PV_STEP = 9;
-    private final java.util.LinkedList<Point> previewSnake = new java.util.LinkedList<>();
+    private final MyLinkedList<Point> previewSnake = new MyLinkedList<>();
     private int previewDir = Snake.RIGHT;
     private boolean previewInit = false;
 
@@ -180,7 +180,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
         }
         boolean tick() { y-=0.9f; alpha-=0.020f; return alpha>0; }
     }
-    private final List<Popup> popups = new ArrayList<>();
+    private final MyArrayList<Popup> popups = new MyArrayList<>();
 
     // ── Efekt göstergesi (aktif güç-uplar) ───────────────────────
     private static Color puColor(PowerUpManager.PowerUpType t) {
@@ -563,7 +563,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
 
     // ── Yılan ────────────────────────────────────────────────────
     private void drawSnake(Graphics2D g2) {
-        java.util.LinkedList<Point> body = snake.getBody();
+        MyLinkedList<Point> body = snake.getBody();
         int n = body.size();
         if (n == 0) return;
 
@@ -576,7 +576,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
         Color bodyColor  = darken(snakeBase, 0.72f);
         Color tailColor  = darken(snakeBase, 0.28f);
         Color glowColor  = shielded ? new Color(250, 204, 21, 50)
-                                    : new Color(snakeBase.getRed(), snakeBase.getGreen(), snakeBase.getBlue(), 40);
+                : new Color(snakeBase.getRed(), snakeBase.getGreen(), snakeBase.getBlue(), 40);
 
         // Baş görsel konumu (iki game tick arası interpolasyon)
         float[] hv = headVisualPos();
@@ -645,7 +645,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
      * tweenT=1 → body[0] konumu (tam hücre kaydı tamamlandı)
      */
     private float[] headVisualPos() {
-        java.util.LinkedList<Point> body = snake.getBody();
+        MyLinkedList<Point> body = snake.getBody();
         if (tweenT >= 1.0f || body.size() < 2) {
             Point h = body.getFirst();
             return new float[]{ cx(h.x), cy(h.y) };
@@ -663,7 +663,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
 
     /** Görsel pozisyon dizisinden glow path'i oluşturur. */
     private Path2D.Float buildSnakePath(float[] vx, float[] vy,
-                                        java.util.LinkedList<Point> body) {
+                                        MyLinkedList<Point> body) {
         Path2D.Float path = new Path2D.Float();
         path.moveTo(vx[0], vy[0]);
         for (int i = 1; i < body.size(); i++) {
@@ -699,9 +699,9 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
     // ── Yiyecekler ───────────────────────────────────────────────
     private void drawFood(Graphics2D g2) {
         double pulse = Math.sin(animTick * 0.11) * 0.5 + 0.5;
-        for (Map.Entry<Point, Food.FoodType> e : food.getFoodMap().entrySet()) {
-            Point p = e.getKey(); int x=cx(p.x), y=cy(p.y);
-            switch (e.getValue()) {
+        for (MyHashMap.Entry<Point, Food.FoodType> e : food.getFoodMap().entries()) {
+            Point p = e.key; int x=cx(p.x), y=cy(p.y);
+            switch (e.value) {
                 case NORMAL: drawFoodNormal(g2,x,y,pulse);    break;
                 case BONUS:  drawFoodBonus (g2,x,y,pulse,p);  break;
                 case SUPER:  drawFoodSuper (g2,x,y,pulse);    break;
@@ -749,9 +749,9 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
     // ── Güç-uplar ─────────────────────────────────────────────────
     private void drawPowerUps(Graphics2D g2) {
         double pulse = Math.sin(animTick * 0.13) * 0.5 + 0.5;
-        for (Map.Entry<Point, PowerUpManager.PowerUp> e : powerUps.getBoardMap().entrySet()) {
-            Point p = e.getKey();
-            PowerUpManager.PowerUp pu = e.getValue();
+        for (MyHashMap.Entry<Point, PowerUpManager.PowerUp> e : powerUps.getBoardMap().entries()) {
+            Point p = e.key;
+            PowerUpManager.PowerUp pu = e.value;
             drawPowerUpAt(g2, cx(p.x), cy(p.y), pu, pulse);
         }
     }
@@ -793,7 +793,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
 
     // ── Aktif efektler (sağ alt köşe) ────────────────────────────
     private void drawActiveEffects(Graphics2D g2) {
-        List<PowerUpManager.ActiveEffect> effects = powerUps.getActiveEffects();
+        MyArrayList<PowerUpManager.ActiveEffect> effects = powerUps.getActiveEffects();
         if (effects.isEmpty()) return;
 
         int ex = GRID_W - 8, ey = GRID_H - 8;
@@ -1297,7 +1297,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
         settingsRects[idx] = new Rectangle(tX, tY, tW, tH);
 
         g2.setColor(on ? new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 180)
-                       : new Color(40, 50, 70));
+                : new Color(40, 50, 70));
         g2.fillRoundRect(tX, tY, tW, tH, tH, tH);
         g2.setColor(on ? accent : new Color(70, 85, 105));
         g2.setStroke(new BasicStroke(1f));
@@ -1375,9 +1375,9 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener, Mo
         int left  = pvTurnLeft(previewDir), right = pvTurnRight(previewDir);
         int[] dirs = rng.nextInt(5) == 0
                 ? (rng.nextBoolean() ? new int[]{left, previewDir, right}
-                                     : new int[]{right, previewDir, left})
+                : new int[]{right, previewDir, left})
                 : (rng.nextBoolean() ? new int[]{previewDir, left, right}
-                                     : new int[]{previewDir, right, left});
+                : new int[]{previewDir, right, left});
 
         for (int dir : dirs) {
             Point next = pvNext(head, dir);
