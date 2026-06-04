@@ -1,4 +1,7 @@
+package game;
+
 import javax.sound.sampled.*;
+import datastructures.MyHashMap;
 
 /**
  * SoundManager.java

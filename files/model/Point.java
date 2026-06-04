@@ -1,3 +1,5 @@
+package model;
+
 /**
  * Point.java
  * Oyun tahtasındaki bir hücrenin koordinatını temsil eder.

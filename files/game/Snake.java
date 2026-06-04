@@ -1,3 +1,8 @@
+package game;
+
+import model.Point;
+import datastructures.MyLinkedList;
+
 /**
  * Snake.java
  *

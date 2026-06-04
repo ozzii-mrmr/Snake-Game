@@ -1,4 +1,7 @@
+package game;
+
 import java.io.*;
+import datastructures.MyTreeMap;
 
 /**
  * ScoreManager.java

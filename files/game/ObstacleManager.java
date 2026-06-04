@@ -1,4 +1,9 @@
+package game;
+
 import java.util.Random;
+import model.Point;
+import datastructures.MyHashSet;
+import datastructures.MyArrayList;
 
 /**
  * ObstacleManager.java

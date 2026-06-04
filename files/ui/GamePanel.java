@@ -1,3 +1,17 @@
+package ui;
+
+import model.Point;
+import game.Snake;
+import game.Food;
+import game.ObstacleManager;
+import game.PowerUpManager;
+import game.InputBuffer;
+import game.ScoreManager;
+import game.SoundManager;
+import datastructures.MyLinkedList;
+import datastructures.MyHashMap;
+import datastructures.MyArrayList;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;

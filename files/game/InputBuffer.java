@@ -1,3 +1,7 @@
+package game;
+
+import datastructures.MyArrayDeque;
+
 /**
  * InputBuffer.java
  *

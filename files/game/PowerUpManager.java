@@ -1,4 +1,10 @@
+package game;
+
 import java.util.Random;
+import model.Point;
+import datastructures.MyHashMap;
+import datastructures.MyMinHeap;
+import datastructures.MyArrayList;
 
 /**
  * PowerUpManager.java

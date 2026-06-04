@@ -1,4 +1,8 @@
+package game;
+
 import java.util.Random;
+import model.Point;
+import datastructures.MyHashMap;
 
 /**
  * Food.java
